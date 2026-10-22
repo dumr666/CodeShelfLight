@@ -314,6 +314,16 @@
         "category": "CodeShelf Light"
       },
       {
+        "command": "codeshelfLight.installDaemon",
+        "title": "Install Background Service (light works without VS Code)",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.uninstallDaemon",
+        "title": "Remove Background Service",
+        "category": "CodeShelf Light"
+      },
+      {
         "command": "codeshelfLight.test",
         "title": "Test States",
         "category": "CodeShelf Light"

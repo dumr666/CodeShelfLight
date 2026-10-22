@@ -4,6 +4,9 @@
 
 First public release.
 
+### Extension
+- Background service (`CodeShelf Light: Install Background Service`): sends the status without VS Code running, e.g. for Claude Code in a plain terminal. On Linux it installs a systemd user service; the extension stops sending while it runs.
+
 ### Firmware
 - States working, waiting, attention, error and off, each with its own color, pattern (solid, breathe, blink, double blink, flash, rainbow) and speed, with smooth fades.
 - Settings page styled like iOS settings, for phones and desktops. Changes apply as you make them, and the light previews the state you are editing.

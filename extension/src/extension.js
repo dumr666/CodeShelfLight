@@ -3,6 +3,7 @@ const vscode = require('vscode');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { execFile } = require('child_process');
 const agents = require('./agents');
 const sessions = require('./sessions');
 const lights = require('./lights');
@@ -22,6 +23,7 @@ const LABELS = {
 };
 const HEARTBEAT_MS = 5000;
 const TICK_MS = 1000;
+const DAEMON_FILES = ['daemon.js', 'sessions.js', 'lights.js', 'discovery.js'];
 const CHAT_POLL_MS = 2000;
 
 let log;
@@ -57,8 +59,40 @@ function currentSessions() {
         .map((s) => ({ ...s, effective: sessions.effectiveState(s, now, opts) }));
 }
 
+// The background service (daemon.js) touches daemon.alive every second; while it is fresh it does the sending
+function daemonAlive() {
+    try { return Date.now() - fs.statSync(path.join(agents.BASE_DIR, 'daemon.alive')).mtimeMs < 10000; } catch (e) { return false; }
+}
+
+// Settings the background service needs (it has no VS Code); rewritten only when they change
+let daemonJson = '';
+function writeDaemonConfig() {
+    const json = JSON.stringify({
+        enabled: cfg().get('enabled', true),
+        lights: cfg().get('lights', []),
+        agents: cfg().get('agents', ['claude-code']),
+        priority: cfg().get('priority', sessions.DEFAULT_PRIORITY),
+        codes: cfg().get('codes', {}),
+        staleWorkingMinutes: cfg().get('staleWorkingMinutes', 15),
+        doneToIdleMinutes: cfg().get('doneToIdleMinutes', 0),
+        muted: [...muted()],
+    }, null, 2);
+    if (json === daemonJson) return;
+    daemonJson = json;
+    try {
+        fs.mkdirSync(agents.BASE_DIR, { recursive: true });
+        const file = path.join(agents.BASE_DIR, 'daemon.json');
+        fs.writeFileSync(file, json, { mode: 0o600 }); // holds light passwords
+        try { fs.chmodSync(file, 0o600); } catch (e) { /* not supported on Windows */ }
+    } catch (e) {
+        logLine(`daemon.json: ${e.message}`);
+    }
+}
+
 function tick(force) {
     if (Date.now() < testUntil) return;
+    writeDaemonConfig();
+    const background = daemonAlive();
     const all = currentSessions();
     const mute = muted();
     const priority = cfg().get('priority', sessions.DEFAULT_PRIORITY);
@@ -73,7 +107,10 @@ function tick(force) {
         const state = !enabled || !light.enabled ? 'off' : sessions.aggregate(sessions.sessionsForLight(all, light, mute), priority);
         if (state !== link.state) logLine(`${light.name}: ${link.state || 'start'} -> ${state}`);
         // Send right away on a change, otherwise repeat now and then (the light may have been off or restarted)
-        if (state !== link.state || force || Date.now() - link.sentAt > HEARTBEAT_MS) {
+        if (background) {
+            link.ok = true;
+            link.state = state;
+        } else if (state !== link.state || force || Date.now() - link.sentAt > HEARTBEAT_MS) {
             link.ok = link.send(light, ports[i], codeFor(state));
             link.state = state;
             link.sentAt = Date.now();
@@ -183,8 +220,64 @@ function chatTick() {
 function deployHookScript() {
     fs.mkdirSync(SESSIONS_DIR, { recursive: true });
     fs.copyFileSync(path.join(ctx.extensionPath, 'src', 'hook.js'), agents.HOOK_PATH);
+    let updated = false;
+    for (const f of DAEMON_FILES) {
+        const src = fs.readFileSync(path.join(ctx.extensionPath, 'src', f));
+        const dest = path.join(agents.BASE_DIR, f);
+        if (!fs.existsSync(dest) || !fs.readFileSync(dest).equals(src)) {
+            fs.writeFileSync(dest, src);
+            updated = true;
+        }
+    }
+    if (updated && process.platform === 'linux') execFile('systemctl', ['--user', 'try-restart', SERVICE_NAME], () => {});
     agents.writeAgentsFile(agentList());
     writeLightsFile();
+}
+
+// ---------- Background service ----------
+
+const SERVICE_NAME = 'codeshelf-light.service';
+
+// Linux: a systemd user service, started at login. Elsewhere the command to run is shown.
+async function installDaemon() {
+    deployHookScript();
+    const script = path.join(agents.BASE_DIR, 'daemon.js');
+    const node = await new Promise((resolve) => {
+        const configured = cfg().get('nodePath', 'node');
+        if (path.isAbsolute(configured)) return resolve(configured);
+        execFile(process.platform === 'win32' ? 'where' : 'which', [configured], (err, out) => resolve(err ? null : out.split(/\r?\n/)[0].trim()));
+    });
+    if (!node) {
+        vscode.window.showErrorMessage('Node.js not found. Install it or set codeshelfLight.nodePath.');
+        return;
+    }
+    if (process.platform !== 'linux') {
+        await vscode.env.clipboard.writeText(`"${node}" "${script}"`);
+        vscode.window.showInformationMessage('Run this at login to keep the light working without VS Code (copied to the clipboard): ' + `"${node}" "${script}"`);
+        return;
+    }
+    const dir = path.join(os.homedir(), '.config', 'systemd', 'user');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, SERVICE_NAME),
+        `[Unit]\nDescription=CodeShelf Light background service\n\n[Service]\nExecStart="${node}" "${script}"\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=default.target\n`);
+    execFile('systemctl', ['--user', 'daemon-reload'], () => {
+        execFile('systemctl', ['--user', 'enable', '--now', SERVICE_NAME], (err) => {
+            if (err) vscode.window.showErrorMessage(`Could not start the service: ${err.message}`);
+            else vscode.window.showInformationMessage('CodeShelf Light now runs in the background: the light works without VS Code.');
+        });
+    });
+}
+
+function uninstallDaemon() {
+    if (process.platform !== 'linux') {
+        vscode.window.showInformationMessage('Stop the daemon.js process you started and remove it from your login items.');
+        return;
+    }
+    execFile('systemctl', ['--user', 'disable', '--now', SERVICE_NAME], () => {
+        fs.rmSync(path.join(os.homedir(), '.config', 'systemd', 'user', SERVICE_NAME), { force: true });
+        execFile('systemctl', ['--user', 'daemon-reload'], () => {});
+        vscode.window.showInformationMessage('Background service removed. The light follows VS Code again.');
+    });
 }
 
 // Sync hooks with the selected agents: install (or update) for selected ones, remove from the rest
@@ -549,6 +642,7 @@ function activate(context) {
         test: testColors, reset: resetSessions, toggle,
         installHooks: () => { ctx.globalState.update('hooksConsent', true); syncHooks(true); },
         uninstallHooks: uninstallAllHooks,
+        installDaemon, uninstallDaemon,
         showLog: () => log.show(),
     };
     for (const [name, fn] of Object.entries(commands)) {
