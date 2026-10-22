@@ -7,6 +7,7 @@ const agents = require('./agents');
 const sessions = require('./sessions');
 const lights = require('./lights');
 const discovery = require('./discovery');
+const chat = require('./chat');
 
 const SESSIONS_DIR = path.join(agents.BASE_DIR, 'sessions');
 const LEGACY_DIR = path.join(os.homedir(), '.claude', 'busy-light');
@@ -21,12 +22,14 @@ const LABELS = {
 };
 const HEARTBEAT_MS = 5000;
 const TICK_MS = 1000;
+const CHAT_POLL_MS = 2000;
 
 let log;
 let statusItem;
 let ctx;
 let links = []; // one Link per entry of codeshelfLight.lights, same order
 let testUntil = 0;
+let bridge; // runs the prompts typed on the lights' Chat tab
 
 const cfg = () => vscode.workspace.getConfiguration('codeshelfLight');
 const logLine = (msg) => log.appendLine(`[${new Date().toLocaleTimeString()}] ${msg}`);
@@ -111,10 +114,77 @@ function updateStatusBar(state, all, results) {
 
 // ---------- Agents and hooks ----------
 
+// What hook.js needs to talk to a light: questions (codeshelfLight.remoteAnswers) and chat history (codeshelfLight.chatHistory), both off by default
+function writeLightsFile() {
+    const on = cfg().get('remoteAnswers', false);
+    const history = cfg().get('chatHistory', false);
+    agents.writeLightsFile({
+        ask: { enabled: on, timeout: Math.min(90, Math.max(5, cfg().get('remoteAnswerTimeout', 60))) },
+        chat: { history },
+        lights: on || history ? configuredLights().filter((l) => l.enabled && l.host && l.password && l.connection !== 'usb') // only password-protected lights
+            .map((l) => ({ name: l.name, host: l.host, password: l.password, agents: l.agents })) : [],
+    });
+}
+
+// ---------- Prompts from the lights' Chat tab ----------
+
+// Folders the page may pick from: open workspace folders, folders of recent agent sessions, and codeshelfLight.chatProjects
+function chatProjects() {
+    const open = (vscode.workspace.workspaceFolders || []).map((f) => f.uri.fsPath);
+    const recent = currentSessions().sort((a, b) => b.ts - a.ts).map((s) => s.cwd);
+    const extra = cfg().get('chatProjects', []).map(agents.expand);
+    return chat.projectList([...open, ...extra, ...recent].filter((p) => p && fs.existsSync(p)));
+}
+
+// Prompts from the lights run in a visible terminal, like a session you started yourself. The answer comes back
+// to the page through the hooks (codeshelfLight.chatHistory). A terminal that still runs claude takes the next prompt.
+const chatTerminals = new Map(); // folder -> terminal
+
+function runInTerminal({ claude, cwd, text, continueChat, fresh }) {
+    let term = chatTerminals.get(cwd);
+    if (fresh && term) {
+        term.dispose();
+        term = null;
+    }
+    if (term && term.exitStatus === undefined) {
+        term.show(true);
+        term.sendText(chat.pasted(text), false);
+        setTimeout(() => term.sendText('\r', false), 250);
+    } else {
+        term = vscode.window.createTerminal({ name: `Claude: ${path.basename(cwd)}`, cwd, shellPath: claude, shellArgs: chat.terminalArgs({ text, continueChat }) });
+        term.show(true);
+    }
+    chatTerminals.set(cwd, term);
+    return { started: true, note: cfg().get('chatHistory', false) ? '' : 'Started in VS Code. Turn on codeshelfLight.chatHistory to get the answer here.' };
+}
+
+// promptMode "panel": the graphical Claude Code window. Claude Code only fills in the prompt (it cannot be sent from
+// outside), so you press Enter yourself. It works in the open workspace, so other folders use the terminal.
+async function runInPanel(opts) {
+    const folders = (vscode.workspace.workspaceFolders || []).map((f) => path.resolve(f.uri.fsPath));
+    if (!folders.includes(path.resolve(opts.cwd))) return runInTerminal(opts);
+    try {
+        await vscode.commands.executeCommand('claude-vscode.primaryEditor.open', undefined, opts.text);
+    } catch (e) {
+        logLine(`chat: Claude Code panel failed (${e.message}), using terminal`);
+        return runInTerminal(opts);
+    }
+    vscode.window.showInformationMessage('CodeShelf Light: prompt is ready in the Claude Code window, press Enter to send it.');
+    return { started: true, note: 'Waiting in the Claude Code window: press Enter there to send it.' };
+}
+
+function chatTick() {
+    if (!cfg().get('remotePrompts', false) || !cfg().get('enabled', true)) return;
+    const wifi = configuredLights().filter((l) => l.enabled && l.host && l.password && l.connection !== 'usb'); // only password-protected lights
+    if (!wifi.length) return;
+    bridge.poll(wifi, chatProjects(), chat.findClaude(cfg().get('claudePath', ''))).catch((e) => logLine(`chat: ${e.message}`));
+}
+
 function deployHookScript() {
     fs.mkdirSync(SESSIONS_DIR, { recursive: true });
     fs.copyFileSync(path.join(ctx.extensionPath, 'src', 'hook.js'), agents.HOOK_PATH);
     agents.writeAgentsFile(agentList());
+    writeLightsFile();
 }
 
 // Sync hooks with the selected agents: install (or update) for selected ones, remove from the rest
@@ -495,6 +565,7 @@ function activate(context) {
                 if (ctx.globalState.get('hooksConsent')) syncHooks(false);
                 else agents.writeAgentsFile(agentList());
             }
+            if (['remoteAnswers', 'remoteAnswerTimeout', 'chatHistory', 'lights'].some((k) => e.affectsConfiguration(`codeshelfLight.${k}`))) writeLightsFile();
             if (e.affectsConfiguration('codeshelfLight.lights')) resetLinks();
             tick(true);
         }),
@@ -509,6 +580,12 @@ function activate(context) {
     }
     const interval = setInterval(() => tick(false), TICK_MS);
     context.subscriptions.push({ dispose: () => clearInterval(interval) });
+    bridge = new chat.Bridge(logLine, (opts) => { const m = cfg().get('promptMode', 'terminal'); return m === 'panel' ? runInPanel(opts) : m === 'terminal' ? runInTerminal(opts) : chat.runClaude(opts); });
+    context.subscriptions.push(vscode.window.onDidCloseTerminal((t) => {
+        for (const [folder, term] of chatTerminals) if (term === t) chatTerminals.delete(folder);
+    }));
+    const chatInterval = setInterval(chatTick, CHAT_POLL_MS);
+    context.subscriptions.push({ dispose: () => clearInterval(chatInterval) });
 
     migrateSingleLight().then(() => findLightsOnFirstStart()).catch((e) => logLine(e.message)).finally(() => tick(true));
 

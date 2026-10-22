@@ -35,9 +35,10 @@ Those values apply until WiFi is set another way; `secrets.h` is ignored by git 
 
 ## Settings page
 
-`web/index.html` is a single page, styled like iOS settings, with three tabs:
+`web/index.html` is a single page, styled like iOS settings, with four tabs (Chat is only there over WiFi, not over Bluetooth):
 
-- **Status:** current state, brightness, set a state by hand
+- **Chat:** prompts for the agent and the agents' final answers, see the [extension](../extension/README.md#chat-on-your-phone)
+- **Status:** current state, brightness, set a state by hand, and questions from the agent to answer
 - **Lights:** color, pattern and speed for each state, fade time, turn-off timeout. Changes apply as you make them, and the light previews the state you are editing
 - **Settings:** name, WiFi on/off and network, Bluetooth on/off, page password, device info, firmware update, restart
 

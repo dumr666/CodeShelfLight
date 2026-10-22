@@ -28,6 +28,8 @@ status = {"mode": "T", "source": "wifi", "wifiState": "connected", "ip": "127.0.
           "bleClients": 0, "uptime": 0, "heap": 210000, "version": "mock", "build": "mock"}
 started = time.time()
 log = []  # requests that change something, for tests
+ask = {"id": 0, "last": 0, "expires": 0}
+chat = {"msgs": [], "last": 0, "projects": ["codeshelf", "elfai"], "prompt": None, "prompts": 0}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -57,6 +59,21 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/scan":
             return self.send(200, json.dumps([{"ssid": "Home", "rssi": -45, "secure": True},
                                               {"ssid": "Guest <b>", "rssi": -70, "secure": False}]))
+        if url.path == "/ask":
+            if ask["id"] and time.time() > ask["expires"]:
+                ask["id"] = 0
+            out = {"id": ask["id"]}
+            if ask["id"]:
+                out.update({k: ask[k] for k in ("title", "text", "options", "free") if k in ask})
+                out["ttl"] = int(ask["expires"] - time.time())
+                if "answer" in ask:
+                    out["answer"] = ask["answer"]
+            return self.send(200, json.dumps(out))
+        if url.path == "/chat":
+            after = int(parse_qs(url.query).get("after", ["0"])[0])
+            return self.send(200, json.dumps({"seq": chat["last"], "running": chat["prompt"] is not None,
+                                              "projects": chat["projects"],
+                                              "msgs": [m for m in chat["msgs"] if m["id"] > after]}))
         if url.path == "/log":
             return self.send(200, json.dumps(log))
         log.append("GET " + self.path)
@@ -83,6 +100,53 @@ class Handler(BaseHTTPRequestHandler):
                 elif k not in WRITE_ONLY:
                     config[k] = v
             return self.send(200, json.dumps({"reboot": reboot, "config": config}))
+        if self.path == "/ask":
+            d = json.loads(body)
+            ask.update(id=ask["last"] + 1, last=ask["last"] + 1, title=d.get("title", ""), text=d.get("text", ""),
+                       options=d.get("options", []), free=bool(d.get("free")), expires=time.time() + d.get("ttl", 90))
+            ask.pop("answer", None)
+            return self.send(200, json.dumps({"id": ask["id"]}))
+        if self.path == "/answer":
+            d = json.loads(body)
+            if d.get("id") != ask["id"] or "answer" in ask:
+                return self.send(409, json.dumps({"error": "the question is gone"}))
+            ask["answer"] = d["answer"]
+            return self.send(200, "{}")
+        if self.path.startswith("/chat"):
+            d = json.loads(body or "{}")
+            def add(role, project, text):
+                chat["last"] += 1
+                chat["msgs"] = (chat["msgs"] + [{"id": chat["last"], "role": role, "project": project, "text": text}])[-8:]
+            if self.path == "/chat":
+                if chat["prompt"]:
+                    return self.send(409, json.dumps({"error": "the agent is still working on the previous prompt"}))
+                if d.get("project") not in chat["projects"] or not d.get("text", "").strip():
+                    return self.send(400, json.dumps({"error": "unknown project"}))
+                chat["prompts"] += 1
+                chat["prompt"] = {"id": chat["prompts"], "taken": False, **d}
+                add("user", d["project"], d["text"].strip())
+                return self.send(200, json.dumps({"id": chat["prompts"]}))
+            if self.path == "/chat/next":
+                p = chat["prompt"]
+                if not p or p["taken"]:
+                    return self.send(200, '{"id":0}')
+                p["taken"] = True
+                return self.send(200, json.dumps({k: p[k] for k in ("id", "project", "text")} | {"newChat": bool(p.get("newChat"))}))
+            if self.path == "/chat/done":
+                chat["prompt"] = None
+            elif self.path == "/chat/msg":
+                last = chat["msgs"][-1] if chat["msgs"] else None
+                if not (d["role"] == "user" and last and last["role"] == "user" and last["text"] == d["text"]):
+                    add(d["role"], d.get("project", ""), d["text"])
+            elif self.path == "/chat/projects":
+                chat["projects"] = d["projects"]
+            elif self.path == "/chat/clear":
+                chat["msgs"] = []
+            return self.send(200, "{}")
+        if self.path == "/ask/clear":
+            ask["id"] = 0
+            ask.pop("answer", None)
+            return self.send(200, "{}")
         self.send(200, "OK", "text/plain")
 
 

@@ -182,6 +182,56 @@
           "default": 0,
           "description": "Minutes after which 'done' falls back to 'idle'. Both show 'waiting' by default, so this only matters with custom codes"
         },
+        "codeshelfLight.remoteAnswers": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Claude Code: show permission requests and `AskUserQuestion` questions on the light's web page (WiFi) so you can answer from your phone. The terminal still asks if nobody answers in time. Only used for lights that have a page password set in `codeshelfLight.lights` (otherwise anyone on your network could answer)."
+        },
+        "codeshelfLight.remoteAnswerTimeout": {
+          "type": "number",
+          "default": 60,
+          "minimum": 5,
+          "maximum": 90,
+          "description": "Seconds to wait for an answer from the light before the agent asks in the terminal instead"
+        },
+        "codeshelfLight.chatHistory": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Claude Code: send your prompts and the agent's final answers to the Chat tab on the light's web page (WiFi), so you can read them on your phone. Kept in the light's memory only (last 8 messages, lost on restart). Only used for lights that have a page password set in `codeshelfLight.lights`."
+        },
+        "codeshelfLight.remotePrompts": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Run prompts typed on the Chat tab of the light's web page (WiFi) with the `claude` CLI in a project folder, and show the answer there. **Anyone who knows the light's page password can make this computer run Claude Code**, so use a strong password. Needs a page password and VS Code open. Tools that need approval are denied unless `codeshelfLight.remoteAnswers` is on, then you approve them on the page."
+        },
+        "codeshelfLight.promptMode": {
+          "type": "string",
+          "enum": [
+            "terminal",
+            "panel",
+            "background"
+          ],
+          "default": "terminal",
+          "enumDescriptions": [
+            "Open a VS Code terminal with an interactive Claude Code, so you can watch it work. The answer comes to the page through the hooks, so it needs `codeshelfLight.chatHistory`. Approvals you do not answer on the page are asked in the terminal.",
+            "Open the graphical Claude Code window with the prompt filled in. You press Enter to send it (Claude Code cannot be told to send). Only for folders open in this VS Code window, others use the terminal.",
+            "Run `claude -p` out of sight and post its answer to the page. Nothing shows in VS Code."
+          ],
+          "markdownDescription": "How a prompt typed on the light's Chat tab runs."
+        },
+        "codeshelfLight.chatProjects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Extra project folders to offer on the Chat tab (`~` allowed). Open workspace folders and folders of recent agent sessions are offered anyway."
+        },
+        "codeshelfLight.claudePath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The `claude` command for prompts from the light. Empty finds the one that comes with the Claude Code extension, then `claude` on the PATH."
+        },
         "codeshelfLight.nodePath": {
           "type": "string",
           "default": "node",

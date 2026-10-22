@@ -13,6 +13,7 @@ It works with Claude Code, Gemini CLI, GitHub Copilot CLI, Cursor and any tool t
 
 - **One glance:** working, waiting, needs you, error. Several sessions at once show the most important one.
 - **Your colors:** pick a color, pattern (solid, breathe, blink, double blink, flash, rainbow) and speed for each state, from your phone.
+- **Answer from your phone:** optionally, permission requests and questions from Claude Code show on the light's page, and you can chat with it from there. Both are off by default; see the [extension](extension/README.md).
 - **Several lights:** one per project, one per agent, or one on every desk.
 - **No cloud:** the light lives on your WiFi (or a USB cable). Nothing leaves your network.
 - **Cheap hardware:** an ESP32-S3 board with a built-in RGB LED, about €5.

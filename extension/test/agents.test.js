@@ -75,3 +75,15 @@ test('hook.js prints only what the agent expects', () => {
     assert.strictEqual(runHook('mine', 'working'), '');
     assert.strictEqual(runHook('claude-code', 'Stop', null), ''); // no JSON on stdin does not break it
 });
+
+test('Claude Code: the hooks that wait for an answer get a long timeout', () => {
+    const claude = all['claude-code'];
+    agents.install(claude, 'node');
+    const hooks = read('.claude/settings.json').hooks;
+    const timeout = (ev, matcher) => hooks[ev].find((g) => g.matcher === matcher).hooks[0].timeout;
+    assert.strictEqual(timeout('PermissionRequest', '*'), 100);
+    assert.strictEqual(timeout('PreToolUse', 'AskUserQuestion'), 100);
+    assert.strictEqual(timeout('PreToolUse', '*'), 5);
+    assert.ok(agents.isInstalled(claude, 'node'));
+    agents.uninstall(claude);
+});

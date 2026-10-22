@@ -9,6 +9,7 @@ const HOME = os.homedir();
 const BASE_DIR = path.join(HOME, '.codeshelf', 'light');
 const HOOK_PATH = path.join(BASE_DIR, 'hook.js');
 const HOOK_MARKER = 'codeshelf/light/hook.js';
+const ASK_HOOK_TIMEOUT = 100; // s; the hook gives up on its own after codeshelfLight.remoteAnswerTimeout (max 90)
 const LEGACY_MARKERS = ['busy-light/hook.js']; // Claude Busy Light 0.x
 
 const PRESETS = {
@@ -18,6 +19,10 @@ const PRESETS = {
         file: '~/.claude/settings.json',
         detect: '~/.claude',
         matcherEvents: ['PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'PermissionRequest'],
+        // Questions the hook can send to the light (see hook.js); only does anything with codeshelfLight.remoteAnswers on
+        ask: { PermissionRequest: 'permission', 'ask-question': 'question' },
+        // What the hook posts to the chat history on the light; only does anything with codeshelfLight.chatHistory on
+        chat: { UserPromptSubmit: 'user', Stop: 'assistant' },
         events: {
             SessionStart: { by: 'source', cases: { compact: 'working' }, default: 'idle' },
             UserPromptSubmit: 'working',
@@ -131,13 +136,23 @@ function writeJson(file, data) {
 // ---- Format "claude" (Claude Code, Gemini CLI): hooks.{Event}: [{ matcher?, hooks: [{ type, command, timeout }] }]
 const claudeFormat = {
     entries(agent, nodePath) {
-        return Object.keys(agent.events).map((ev) => {
-            const hook = { type: 'command', command: hookCommand(nodePath, agent.id, ev), timeout: agent.timeoutMs ? 5000 : 5 };
+        const ask = agent.ask || {};
+        const entries = Object.keys(agent.events).map((ev) => {
+            const seconds = ask[ev] ? ASK_HOOK_TIMEOUT : 5; // a hook that waits for an answer needs time
+            const hook = { type: 'command', command: hookCommand(nodePath, agent.id, ev), timeout: agent.timeoutMs ? seconds * 1000 : seconds };
             if (agent.hookName) hook.name = 'codeshelf-light';
             const group = { hooks: [hook] };
             if ((agent.matcherEvents || []).includes(ev)) group.matcher = '*';
             return [ev, group];
         });
+        // AskUserQuestion has its own hook so the generic PreToolUse one stays fast
+        if (ask['ask-question']) {
+            entries.push(['PreToolUse', {
+                matcher: 'AskUserQuestion',
+                hooks: [{ type: 'command', command: hookCommand(nodePath, agent.id, 'ask-question'), timeout: ASK_HOOK_TIMEOUT }],
+            }]);
+        }
+        return entries;
     },
     strip(settings) {
         const hooks = settings.hooks || {};
@@ -167,7 +182,7 @@ const claudeFormat = {
     installed(agent, nodePath) {
         const hooks = readJson(expand(agent.file)).hooks || {};
         return this.entries(agent, nodePath).every(([ev, group]) =>
-            (hooks[ev] || []).some((g) => (g.hooks || []).some((h) => h.command === group.hooks[0].command)));
+            (hooks[ev] || []).some((g) => (g.hooks || []).some((h) => h.command === group.hooks[0].command && h.timeout === group.hooks[0].timeout)));
     },
     hasAny(agent) {
         const hooks = readJson(expand(agent.file)).hooks || {};
@@ -264,12 +279,20 @@ function hasAnyHooks(agent) {
 // Rules for hook.js (it reads them on every call)
 function writeAgentsFile(agents) {
     const out = {};
-    for (const [id, a] of Object.entries(agents)) out[id] = { events: a.events || {}, stdout: a.stdout || {} };
+    for (const [id, a] of Object.entries(agents)) out[id] = { events: a.events || {}, stdout: a.stdout || {}, ask: a.ask || {}, chat: a.chat || {} };
     fs.mkdirSync(BASE_DIR, { recursive: true });
     fs.writeFileSync(path.join(BASE_DIR, 'agents.json'), JSON.stringify(out, null, 2));
 }
 
+// Lights the hook may send questions to. Holds light passwords, so only the user can read it.
+function writeLightsFile(data) {
+    fs.mkdirSync(BASE_DIR, { recursive: true });
+    const file = path.join(BASE_DIR, 'lights.json');
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), { mode: 0o600 });
+    try { fs.chmodSync(file, 0o600); } catch (e) { /* not supported on Windows */ }
+}
+
 module.exports = {
     BASE_DIR, HOOK_PATH, PRESETS, allAgents, isDetected, hookCommand, canInstall, install, uninstall,
-    isInstalled, hasAnyHooks, writeAgentsFile, expand,
+    isInstalled, hasAnyHooks, writeAgentsFile, writeLightsFile, expand,
 };

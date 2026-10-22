@@ -110,6 +110,29 @@ select.row-input { -webkit-appearance:none; appearance:none; cursor:pointer; tex
 .muted { color:var(--secondary); font-size:15px; max-width:340px; }
 .toast { position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 72px); transform:translateX(-50%); background:rgba(30,30,30,.92); color:#fff;
   padding:10px 16px; border-radius:12px; font-size:15px; z-index:20; max-width:calc(100% - 32px); text-align:center; }
+/* Chat */
+.chat-log { display:flex; flex-direction:column; gap:10px; padding-bottom:132px; }
+.msg { max-width:88%; padding:9px 13px; border-radius:18px; word-break:break-word; white-space:pre-wrap; font-size:16px; }
+.msg.user { align-self:flex-end; background:var(--blue); color:#fff; border-bottom-right-radius:5px; }
+.msg.assistant { align-self:flex-start; background:var(--card); border-bottom-left-radius:5px; }
+.msg.note { align-self:center; color:var(--secondary); font-size:13px; text-align:center; }
+.msg .who { font-size:11px; opacity:.6; margin-bottom:2px; white-space:normal; }
+.msg pre { margin:6px 0; padding:8px 10px; background:var(--fill); border-radius:8px; overflow-x:auto; font:13px/1.35 ui-monospace, Menlo, monospace; white-space:pre; color:var(--label); }
+.msg code { font:14px ui-monospace, Menlo, monospace; background:var(--fill); padding:1px 4px; border-radius:4px; }
+.msg.user code { background:rgba(255,255,255,.25); }
+.msg.typing { color:var(--secondary); animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity:.4; } }
+.composer { position:fixed; left:0; right:0; bottom:calc(env(safe-area-inset-bottom) + 54px); z-index:4; padding:8px 12px;
+  background:var(--bar); -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px); border-top:.5px solid var(--sep); }
+.composer-in { max-width:640px; margin:0 auto; display:flex; flex-direction:column; gap:6px; }
+.composer-bar { display:flex; align-items:center; gap:10px; font-size:15px; }
+.composer-bar select { flex:1; min-width:0; font:inherit; color:var(--label); background:var(--fill); border:0; border-radius:8px; padding:5px 8px; }
+.composer-bar button { color:var(--blue); padding:4px 6px; border-radius:8px; }
+.composer-bar button.on { background:var(--blue); color:#fff; }
+.composer-send { display:flex; align-items:flex-end; gap:8px; }
+.composer-send textarea { flex:1; min-width:0; resize:none; font:inherit; color:var(--label); background:var(--card); border:.5px solid var(--sep); border-radius:18px; padding:8px 14px; outline:none; max-height:110px; }
+.composer-send button { width:36px; height:36px; border-radius:50%; background:var(--blue); color:#fff; font-size:20px; flex:none; }
+.composer-send button:disabled { opacity:.35; }
 progress { width:100%; height:4px; -webkit-appearance:none; appearance:none; border:0; border-radius:2px; background:var(--fill); }
 progress::-webkit-progress-bar { background:var(--fill); border-radius:2px; }
 progress::-webkit-progress-value { background:var(--blue); border-radius:2px; }
@@ -127,6 +150,28 @@ progress::-moz-progress-bar { background:var(--blue); }
 </div>
 
 <div id="appView" hidden>
+  <!-- Tab: Chat (WiFi only) -->
+  <section class="page" data-tab="chat" hidden>
+    <div class="large-title">Chat</div>
+    <div class="chat-log" id="chatLog">
+      <div class="msg assistant typing" id="chatTyping" hidden></div>
+    </div>
+    <div class="muted" id="chatNone" style="margin:24px auto" hidden>No project to send prompts to. In VS Code turn on <b>codeshelfLight.remotePrompts</b> and keep the window open.</div>
+    <div class="composer">
+      <div class="composer-in">
+        <div class="composer-bar">
+          <select id="chatProject" aria-label="Project"></select>
+          <button id="chatNew" title="The next prompt starts a new conversation">New chat</button>
+          <button id="chatClear" title="Clear the history on the light">Clear</button>
+        </div>
+        <div class="composer-send">
+          <textarea id="chatText" rows="1" placeholder="Prompt for the agent" enterkeyhint="enter"></textarea>
+          <button id="chatSend" aria-label="Send">↑</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Tab: Status -->
   <section class="page" data-tab="status">
     <div class="large-title" id="devName">…</div>
@@ -142,6 +187,15 @@ progress::-moz-progress-bar { background:var(--blue); }
     <div class="group-title">Set manually</div>
     <ul class="list" id="quickStates"></ul>
     <div class="group-footer">The extension overrides this as soon as an agent does something.</div>
+    <div data-http><div id="askBox" hidden>
+      <div class="group-title" id="askTitle">Agent question</div>
+      <ul class="list">
+        <li class="row"><span class="grow" id="askText" style="white-space:pre-wrap;word-break:break-word"></span></li>
+        <li id="askOptions"></li>
+        <li class="row" id="askFreeRow" hidden><input class="row-input" id="askFree" style="text-align:left;color:var(--label)" maxlength="300" placeholder="Type an answer" enterkeyhint="send" autocomplete="off"><button class="action" id="askSend" style="flex:none">Send</button></li>
+      </ul>
+      <div class="group-footer" id="askFooter"></div>
+    </div></div>
   </section>
 
   <!-- Tab: Lights -->
@@ -248,6 +302,7 @@ progress::-moz-progress-bar { background:var(--blue); }
   </div>
 
   <nav class="tabbar">
+    <button data-go="chat" data-http><svg viewBox="0 0 24 24"><path d="M4 3h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>Chat</button>
     <button data-go="status" class="on"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2Zm-3 18h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-1Z"/></svg>Status</button>
     <button data-go="lights"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A4.6 4.6 0 0 0 22 10.8C22 5.9 17.5 2 12 2ZM6.5 13a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>Lights</button>
     <button data-go="settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6c-.6.3-1.2.6-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.6h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5-2.3-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>Settings</button>
@@ -306,6 +361,21 @@ const httpLink = {
   setMode(code) { return fetch('/set?manual=1&c=' + code); },
   setBrightness(v) { return fetch('/brightness?v=' + v); },
   reboot() { return fetch('/reboot', { method:'POST' }); },
+  async ask() { return (await fetch('/ask', { cache:'no-store' })).json(); },
+  async chat(after) {
+    const r = await fetch('/chat?after=' + after, { cache:'no-store' });
+    if (!r.ok) throw new Error('chat');
+    return r.json();
+  },
+  async chatSend(text, project, newChat) {
+    const r = await fetch('/chat', { method:'POST', body:JSON.stringify({ text, project, newChat }) });
+    if (!r.ok) throw new Error((await r.json()).error);
+  },
+  chatClear() { return fetch('/chat/clear', { method:'POST' }); },
+  async answer(id, answer) {
+    const r = await fetch('/answer', { method:'POST', body:JSON.stringify({ id, answer }) });
+    if (!r.ok) throw new Error((await r.json()).error);
+  },
   async scan() {
     for (let i = 0; i < 15; i++) {
       const r = await fetch('/scan', { cache:'no-store' });
@@ -501,7 +571,7 @@ requestAnimationFrame(animate);
 document.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => {
   document.querySelectorAll('[data-go]').forEach((x) => x.classList.toggle('on', x === b));
   document.querySelectorAll('[data-tab]').forEach((t) => { t.hidden = t.dataset.tab !== b.dataset.go; });
-  window.scrollTo(0, 0);
+  window.scrollTo(0, b.dataset.go === 'chat' ? document.body.scrollHeight : 0);
 });
 
 document.addEventListener('click', (e) => {
@@ -625,6 +695,145 @@ $('fwUpload').onclick = () => {
   xhr.send(fd);
 };
 
+// ---------- Agent question (WiFi only): the extension's hook posts it to the light, the answer goes back the same way ----------
+const askState = { id:0, sending:false };
+function renderAsk(q) {
+  const box = $('askBox');
+  if (!q || !q.id) { box.hidden = true; askState.id = 0; return; }
+  const fresh = q.id !== askState.id;
+  askState.id = q.id;
+  box.hidden = false;
+  $('askTitle').textContent = q.title || 'Agent question';
+  $('askText').textContent = q.text || '';
+  $('askText').parentElement.hidden = !q.text;
+  const done = q.answer !== undefined;
+  $('askOptions').innerHTML = (q.options || []).map((o, i) =>
+    `<div class="row tap ${done && o === q.answer ? 'check' : ''}" style="${done ? 'opacity:.5;' : ''}" data-ask="${i}"><span class="grow">${esc(o)}</span></div>`).join('');
+  $('askOptions').hidden = !(q.options || []).length;
+  $('askOptions').onclick = (e) => {
+    const row = e.target.closest('[data-ask]');
+    if (row && !done) sendAnswer(q.id, q.options[+row.dataset.ask]);
+  };
+  $('askFreeRow').hidden = !q.free || done;
+  $('askSend').onclick = () => { if ($('askFree').value.trim()) sendAnswer(q.id, $('askFree').value.trim()); };
+  $('askFree').onkeydown = (e) => { if (e.key === 'Enter') $('askSend').click(); };
+  $('askFooter').textContent = done ? 'Answer sent.' : `The agent waits ${q.ttl} s, then asks in the terminal instead.`;
+  if (fresh) {
+    document.querySelector('[data-go="status"]').click();
+    $('askBox').scrollIntoView({ behavior:'smooth', block:'center' });
+    if (navigator.vibrate) navigator.vibrate(120);
+  }
+}
+async function sendAnswer(id, answer) {
+  if (askState.sending) return;
+  askState.sending = true;
+  try {
+    await link.answer(id, answer);
+    $('askFree').value = '';
+    renderAsk(await link.ask());
+  } catch (e) {
+    toast(e.message);
+  }
+  askState.sending = false;
+}
+async function pollAsk() {
+  if (!link || !link.ask || document.activeElement === $('askFree')) return;
+  try { renderAsk(await link.ask()); } catch (e) { /* next time */ }
+}
+
+// ---------- Chat (WiFi only): prompts go to the computer through the extension, answers and history come back ----------
+const chat = { last:0, projects:[], running:false, fresh:false, sending:false };
+const PROJECT_KEY = 'codeshelf.chatProject';
+const chatVisible = () => !document.querySelector('[data-tab="chat"]').hidden;
+const toBottom = () => window.scrollTo(0, document.body.scrollHeight);
+
+// Escape first, then a little markdown: code blocks, `code`, **bold**
+function md(t) {
+  const parts = String(t).split('```');
+  return parts.map((p, i) => i % 2
+    ? '<pre>' + esc(p.replace(/^[^\n]*\n/, '').replace(/\n$/, '')) + '</pre>'
+    : esc(i ? p.replace(/^\n/, '') : p).replace(/\n$/, i < parts.length - 1 ? '' : '\n')
+      .replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')).join('');
+}
+
+function addMsg(m) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + m.role;
+  el.innerHTML = (m.role !== 'note' && m.project ? `<div class="who">${esc(m.project)}</div>` : '') + md(m.text);
+  $('chatLog').insertBefore(el, $('chatTyping'));
+}
+
+function renderChatBar() {
+  const sel = $('chatProject');
+  const key = chat.projects.join('\n');
+  if (sel.dataset.names !== key) {
+    let want = sel.value;
+    try { want = want || localStorage.getItem(PROJECT_KEY); } catch (e) { /* private mode */ }
+    sel.dataset.names = key;
+    sel.innerHTML = chat.projects.map((n) => `<option>${esc(n)}</option>`).join('');
+    if (chat.projects.includes(want)) sel.value = want;
+  }
+  const none = !chat.projects.length;
+  $('chatNone').hidden = !none;
+  $('chatText').disabled = none;
+  $('chatSend').disabled = none || chat.running || chat.sending;
+  $('chatNew').classList.toggle('on', chat.fresh);
+  const working = chat.running || (state.status && state.status.state === 'working');
+  $('chatTyping').hidden = !working;
+  $('chatTyping').textContent = chat.running ? 'Working on your prompt …' : 'An agent is working …';
+}
+
+async function pollChat() {
+  if (!link || !link.chat) return;
+  try {
+    const first = chat.last === 0;
+    const r = await link.chat(chat.last);
+    if (r.seq < chat.last) { // the light restarted and forgot everything
+      chat.last = 0;
+      document.querySelectorAll('#chatLog .msg:not(.typing)').forEach((e) => e.remove());
+      return;
+    }
+    const stick = first || window.innerHeight + window.scrollY >= document.body.scrollHeight - 160;
+    r.msgs.forEach(addMsg);
+    chat.last = r.seq;
+    chat.projects = r.projects;
+    chat.running = r.running;
+    renderChatBar();
+    if (r.msgs.length && stick && chatVisible()) toBottom();
+  } catch (e) { /* next time */ }
+}
+
+async function sendChat() {
+  const text = $('chatText').value.trim();
+  if (!text || chat.sending || chat.running) return;
+  chat.sending = true;
+  renderChatBar();
+  try {
+    await link.chatSend(text, $('chatProject').value, chat.fresh);
+    try { localStorage.setItem(PROJECT_KEY, $('chatProject').value); } catch (e) { /* private mode */ }
+    $('chatText').value = '';
+    $('chatText').style.height = '';
+    chat.fresh = false;
+    await pollChat();
+    toBottom();
+  } catch (e) {
+    toast(e.message);
+  }
+  chat.sending = false;
+  renderChatBar();
+}
+
+$('chatSend').onclick = sendChat;
+$('chatText').oninput = (e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 110) + 'px'; };
+$('chatText').onkeydown = (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) sendChat(); };
+$('chatNew').onclick = () => { chat.fresh = !chat.fresh; renderChatBar(); };
+$('chatClear').onclick = async () => {
+  try {
+    await link.chatClear();
+    document.querySelectorAll('#chatLog .msg:not(.typing)').forEach((e) => e.remove());
+  } catch (e) { toast(e.message); }
+};
+
 // ---------- Startup ----------
 async function refresh() {
   try {
@@ -632,6 +841,8 @@ async function refresh() {
     render();
     if (state.editing) preview(state.editing); // keep the preview alive while the editor is open
   } catch (e) { /* next time */ }
+  pollAsk();
+  pollChat();
 }
 
 async function start(l) {
@@ -643,6 +854,8 @@ async function start(l) {
   $('connectView').hidden = true;
   $('appView').hidden = false;
   render();
+  if (l.kind === 'wifi') document.querySelector('[data-go="chat"]').click();
+  pollChat();
   clearInterval(start.timer);
   start.timer = setInterval(refresh, l.kind === 'wifi' ? 2000 : 5000);
 }

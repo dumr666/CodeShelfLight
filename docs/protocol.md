@@ -68,6 +68,17 @@ The light listens on port 80 at `http://<host>.local/` (or its IP).
 | `GET /config` | password | Settings JSON |
 | `POST /config` | password | Partial settings JSON. `200 {"reboot":bool,"config":{…}}` or `400 {"error":"…"}` |
 | `GET /scan` | password | WiFi networks: `202` while scanning, then `200 [{"ssid","rssi","secure"}]` |
+| `POST /ask` | password | Show a question on the page (below). `200 {"id":N}` |
+| `GET /ask` | password | The current question, with `answer` once answered. `{"id":0}` when there is none |
+| `POST /answer` | password | `{"id":N,"answer":"…"}` from the page. `409` if the question is gone or already answered |
+| `POST /ask/clear` | password | Remove the question |
+| `GET /chat?after=ID` | password | Chat projects and messages newer than `ID` (below) |
+| `POST /chat` | password | `{"text","project","newChat"}` from the page: a prompt for the extension. `409` while one is still running |
+| `POST /chat/next` | password | The extension takes the waiting prompt: `{"id","project","text","newChat"}` or `{"id":0}` |
+| `POST /chat/done` | password | The prompt is finished |
+| `POST /chat/msg` | password | `{"role":"user\|assistant\|note","project","text"}` adds a message |
+| `POST /chat/projects` | password | `{"projects":["name",…]}` the folders the page may pick |
+| `POST /chat/clear` | password | Clear the history |
 | `POST /reboot` | password | Restart |
 | `POST /update` | password | Firmware upload (`multipart/form-data`, field `firmware`) |
 
@@ -77,6 +88,29 @@ Send `POST /config` with `Content-Type: application/json` (or `text/plain`):
 ```bash
 curl -H 'Content-Type: application/json' -d '{"brightness":128}' http://codeshelf-light-1a2b.local/config
 ```
+
+### Questions
+
+The extension's hook (Claude Code) can put a question on the light's page so you can answer from your phone:
+
+```json
+POST /ask   {"title":"Allow Bash?","text":"npm test","options":["Allow","Deny"],"free":false,"ttl":60}
+```
+
+`options` holds up to 6 labels (≤ 60 characters); with `free: true` the page also takes typed text.
+`title` ≤ 80, `text` ≤ 400 characters, `ttl` 5-600 s (default 90). One question at a time; a new one replaces the old.
+The page polls `GET /ask` and shows it on the Status tab. The hook polls the same endpoint until `answer` appears, then calls `POST /ask/clear`.
+Questions are kept in RAM only. These endpoints need the page password when one is set, and the extension only uses lights that have one.
+
+### Chat
+
+The page's Chat tab sends a prompt with `POST /chat`; the extension polls `POST /chat/next`, runs `claude -p` in the folder behind the project name (the light only ever sees names, never paths), posts the answer with `POST /chat/msg` and calls `POST /chat/done`. The hook posts your prompts and the agents' final answers with `POST /chat/msg` too (`codeshelfLight.chatHistory`).
+
+```json
+GET /chat?after=12   {"seq":14,"running":false,"projects":["app","tool"],"msgs":[{"id":13,"role":"user","project":"app","text":"…"},{"id":14,"role":"assistant","project":"app","text":"…"}]}
+```
+
+Message ids only grow; a `seq` lower than the one you saw means the light restarted. History is the last 8 messages of up to 2500 characters, in RAM only. One prompt at a time, freed after 20 minutes if nobody finishes it.
 
 Status JSON:
 

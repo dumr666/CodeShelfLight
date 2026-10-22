@@ -60,6 +60,31 @@ Each light can follow all sessions, or only some agents and projects. Use **Conf
 
 When several sessions match, the light shows the most important one. The order is set by `codeshelfLight.priority`, `error` › `attention` › `working` › `done` › `idle` by default.
 
+## Answering from your phone
+
+Claude Code only, and off by default. With `codeshelfLight.remoteAnswers` on, a permission request or an `AskUserQuestion` question shows on the Status tab of the light's web page. Tap an option (or type an answer when the question allows it) and the agent continues.
+
+- It needs a light with a page password, set in `codeshelfLight.lights` (the light's password field) as well as on the light. Lights without one are never used, because anyone on your network could answer.
+- If nobody answers within `codeshelfLight.remoteAnswerTimeout` seconds (60 by default), or the light is unreachable, the agent asks in the terminal as usual.
+- Multi-select questions stay in the terminal.
+- Answering `AskUserQuestion` this way passes the answers to the tool through the hook; check it with your Claude Code version before relying on it.
+- Not available over USB or Bluetooth.
+
+## Chat on your phone
+
+The light's web page opens on a **Chat** tab (WiFi). Two switches, both off by default, both Claude Code only:
+
+- `codeshelfLight.chatHistory`: your prompts and the agent's final answers, from every session on this computer, show up in the chat. The light keeps the last 8 messages in RAM; a restart clears them.
+- `codeshelfLight.remotePrompts`: type a prompt in the chat, pick a project and send it. The extension runs it with `claude -p` in that folder and the answer comes back to the page. VS Code has to be open.
+
+How prompts run:
+
+- The projects on offer are the open workspace folders, the folders of recent agent sessions and `codeshelfLight.chatProjects`. Up to 8.
+- `codeshelfLight.promptMode` decides how it runs. **`terminal`** (default) opens a VS Code terminal with an interactive Claude Code named after the project, so you can watch it work. The next prompt for that project is typed into the same terminal while it runs; if you closed it, `claude --continue` picks the conversation up. The answer comes back to the page through the hooks, so turn on `chatHistory` too. Approvals you do not answer on the page are asked in the terminal. **`panel`** opens the graphical Claude Code window with the prompt filled in, but Claude Code cannot be told to send it, so you press Enter yourself (it only works for folders open in this VS Code window; others use the terminal, so it suits sitting at the computer, not sending from your phone). **`background`** runs `claude -p` out of sight; tools that need approval are denied unless `remoteAnswers` is on.
+- A chat continues until you tap **New chat**. It is a separate session from the Claude Code panel, which does not show it live.
+- The `claude` command is the one that ships with the Claude Code extension for VS Code, then `claude` on the PATH. Set `codeshelfLight.claudePath` to use another one.
+- **Anyone who knows the light's page password can make this computer run Claude Code.** Use a strong password and keep the light off untrusted networks. Like the questions, it only uses lights with a password.
+
 ## Sessions
 
 **Show Sessions** lists every open agent session with its state. Pick one to **mute** it: a muted session no longer lights anything up, for example a long-running agent you do not want to watch. Mutes end with the session.
