@@ -114,7 +114,7 @@ How prompts run:
 | `codeshelfLight.customAgents` | `[]` | Your own agents |
 | `codeshelfLight.priority` | `error, attention, working, done, idle` | Which state wins when several sessions are open |
 | `codeshelfLight.codes` | `T Y R G G O` | Light state for each agent state (advanced) |
-| `codeshelfLight.staleWorkingMinutes` | `15` | "Working" with no events for this long counts as done (interrupts send no event) |
+| `codeshelfLight.staleWorkingMinutes` | `5` | "Working" with no events for this long counts as done (interrupts send no event) |
 | `codeshelfLight.doneToIdleMinutes` | `0` | Turn "done" into "idle" after this long (only matters with custom codes) |
 | `codeshelfLight.nodePath` | `node` | Node binary in the hook command |
 | `codeshelfLight.enabled` | `true` | Send status to the lights |

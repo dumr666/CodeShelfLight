@@ -174,7 +174,7 @@
         },
         "codeshelfLight.staleWorkingMinutes": {
           "type": "number",
-          "default": 15,
+          "default": 5,
           "description": "A session stuck in 'working' with no hook events for this long (e.g. interrupted) is treated as done"
         },
         "codeshelfLight.doneToIdleMinutes": {
