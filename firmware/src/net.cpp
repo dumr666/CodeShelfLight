@@ -28,6 +28,7 @@ void netBegin() {
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(hostName().c_str());
   WiFi.setAutoReconnect(true);
+  WiFi.setSleep(WIFI_PS_MIN_MODEM); // radio sleeps between beacons; requests still arrive (~100 ms extra)
   WiFi.onEvent(onDisconnected, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   WiFi.onEvent(onConnected, ARDUINO_EVENT_WIFI_STA_GOT_IP);
   connect();

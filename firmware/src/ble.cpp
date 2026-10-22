@@ -89,6 +89,8 @@ void bleBegin() {
   adv->setName(config.name.c_str());
   adv->addServiceUUID(BLE_SERVICE_UUID);
   adv->enableScanResponse(true);
+  adv->setMinInterval(800); // 500-1000 ms instead of ~30 ms: far less radio time, the app still finds the light in a second or two
+  adv->setMaxInterval(1600);
   adv->start();
 }
 

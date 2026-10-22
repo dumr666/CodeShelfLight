@@ -68,6 +68,7 @@ void scheduleRestart() {
 }
 
 void setup() {
+  setCpuFrequencyMhz(80); // plenty for LED + WiFi + BLE, about a third less current than 240 MHz
   Serial.begin(115200);
   configLoad();
   ledBegin(); // green fades in from loop()
@@ -93,6 +94,7 @@ void loop() {
     lastFrame = millis();
     ledFrame();
   }
+  delay(1); // let the idle task run (CPU idles between frames) instead of spinning
 
   configLoop();
   if (restartAt && (long)(millis() - restartAt) >= 0) {

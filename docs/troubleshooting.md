@@ -50,7 +50,7 @@ The app is not code-signed. Click **More info → Run anyway**.
 - **Guest or mesh networks** often block devices from seeing each other. Put the computer and the light on the same network.
 - Give the light a fixed IP in your router (DHCP reservation) and use the IP in the extension.
 
-### The light turns off after 30 seconds
+### The light turns off after a while (only if a timeout is set)
 
 It has not heard from the extension. Is VS Code open and the extension enabled? Check the log as above.
 You can change or disable the timeout on the light (Lights → Turn off without signal).

@@ -15,7 +15,7 @@ The VS Code extension, the setup app and the settings page use exactly these int
 
 Purple means a firmware update is running.
 
-A state sent by the extension (WiFi or USB) expires: with no new command for `timeout` seconds (30 by default) the light turns off.
+A state sent by the extension (WiFi or USB) expires: with no new command for `timeout` seconds (off by default; 0 = never) the light turns off.
 The extension repeats the current state every 5 seconds, so this only happens when the computer sleeps or VS Code closes.
 States set by hand (settings page with `manual=1`, Bluetooth) do not expire.
 
@@ -25,7 +25,7 @@ States set by hand (settings page with `manual=1`, Bluetooth) do not expire.
 
 ```json
 {"name":"CodeShelf Light 1A2B","host":"codeshelf-light-1a2b","wifi":true,"ble":true,"ssid":"Home","auth":false,
- "brightness":64,"timeout":30,"fade":600,
+ "brightness":64,"timeout":0,"fade":600,
  "states":{"working":["#0000ff","breathe",2600],"waiting":["#00ff00","solid",2000],
            "attention":["#ff4600","solid",1200],"error":["#ff0000","solid",1000],"off":["#000000","solid",1000]}}
 ```

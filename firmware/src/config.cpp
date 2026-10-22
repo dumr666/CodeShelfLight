@@ -39,7 +39,7 @@ static void setDefaults() {
   config.adminPassword = OTA_PASSWORD;
 #endif
   config.brightness = 64;
-  config.timeout = 30;
+  config.timeout = 0; // the extension resends every 5 s; a light that turns itself off is more surprising than useful
   config.fade = 600;
   config.states[0] = {0, 0, 255, PAT_BREATHE, 2600}; // working: blue, breathing
   config.states[1] = {0, 255, 0, PAT_SOLID, 2000};   // waiting: green
