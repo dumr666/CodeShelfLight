@@ -32,6 +32,7 @@ It works with Claude Code, Gemini CLI, GitHub Copilot CLI, Cursor and any tool t
 ### 1. Get the hardware
 
 A [Waveshare ESP32-S3-Zero](https://www.waveshare.com/esp32-s3-zero.htm) (it has a WS2812 RGB LED on board) and a USB-C data cable.
+If you want to support the development, buy the board through this [affiliate link](https://link.amazon/B04Dw83Y8) (I get a small commission and you pay the same). It helps cover the costs.
 Any ESP32-S3 board with a WS2812 LED works with a one-line change; see [hardware](docs/hardware.md).
 
 ### 2. Set up the light

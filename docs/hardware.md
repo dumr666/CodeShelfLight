@@ -7,6 +7,8 @@
 | [Waveshare ESP32-S3-Zero](https://www.waveshare.com/esp32-s3-zero.htm) | ESP32-S3 with 4 MB flash and a WS2812 RGB LED on GPIO21. About €5. The variant without pin headers fits small enclosures |
 | USB-C cable | A **data** cable. Charge-only cables power the board but the computer does not see it |
 
+**Support the project:** if you buy the board through this [affiliate link](https://link.amazon/B04Dw83Y8), I get a small commission at no extra cost to you. It helps cover the development costs. Buying it directly from Waveshare is just as good.
+
 That is the whole light. It runs from any USB port or phone charger; it only needs the computer's USB port when you set it up over USB or use the USB connection instead of WiFi.
 
 ## Making it glow nicely
