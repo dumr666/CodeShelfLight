@@ -71,9 +71,9 @@ test('a transcript ending with an interrupt marker is not working', () => {
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cs-')), 't.jsonl');
     const line = (t) => JSON.stringify({ message: { content: [{ type: 'text', text: t }] } }) + '\n';
     const now = Date.now();
-    const s = { state: 'working', ts: now, transcript: file };
+    const sess = { state: 'working', ts: now, transcript: file };
     fs.writeFileSync(file, line('hi') + line('[Request interrupted by user for tool use]'));
-    assert.strictEqual(s.effectiveState(s, now, {}), 'done');
+    assert.strictEqual(s.effectiveState(sess, now, {}), 'done');
     fs.appendFileSync(file, line('next prompt'));
-    assert.strictEqual(s.effectiveState(s, now, {}), 'working');
+    assert.strictEqual(s.effectiveState(sess, now, {}), 'working');
 });
