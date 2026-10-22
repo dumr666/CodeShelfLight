@@ -1,0 +1,109 @@
+# Push a tag like v1.2.3 to build everything and draft a GitHub release
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install platformio
+      - run: pio run
+        working-directory: firmware
+      - name: Collect
+        run: |
+          mkdir -p out
+          cp firmware/.pio/build/esp32s3/package/firmware.bin out/codeshelf-light-firmware-${GITHUB_REF_NAME}.bin
+          (cd firmware/.pio/build/esp32s3/package && zip -r "$GITHUB_WORKSPACE/out/codeshelf-light-firmware-package-${GITHUB_REF_NAME}.zip" .)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-package
+          path: firmware/.pio/build/esp32s3/package/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-firmware
+          path: out/
+
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm test
+        working-directory: extension
+      - run: npx --yes @vscode/vsce package --no-dependencies
+        working-directory: extension
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-extension
+          path: extension/*.vsix
+
+  setup:
+    needs: firmware
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04 # older glibc, so the binary runs on more distributions
+            artifact: codeshelf-setup-linux
+          - os: macos-latest
+            artifact: codeshelf-setup-macos.zip
+          - os: windows-latest
+            artifact: codeshelf-setup-windows.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware-package
+          path: firmware-package
+      - run: pip install -r requirements.txt pyinstaller pillow
+        working-directory: setup
+      - run: python build.py --firmware ../firmware-package
+        working-directory: setup
+      - name: Collect
+        shell: bash
+        run: |
+          mkdir -p out
+          case "${{ runner.os }}" in
+            Linux)   cp setup/dist/codeshelf-setup out/${{ matrix.artifact }} ;;
+            Windows) cp setup/dist/codeshelf-setup.exe out/${{ matrix.artifact }} ;;
+            macOS)   ditto -c -k --keepParent "setup/dist/CodeShelf Light Setup.app" out/${{ matrix.artifact }} ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-setup-${{ runner.os }}
+          path: out/
+
+  release:
+    needs: [firmware, extension, setup]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: out
+          merge-multiple: true
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="## $version" '$0 == v {on=1; next} /^## / && on {exit} on' CHANGELOG.md > notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          body_path: notes.md
+          files: out/*

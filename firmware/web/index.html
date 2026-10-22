@@ -1,0 +1,688 @@
+<!doctype html>
+<!-- CodeShelf Light: one page for WiFi and Bluetooth.
+     Served by the device (http://<name>.local/) it talks HTTP. Opened elsewhere (HTTPS, e.g. GitHub Pages, in Bluefy on iPhone)
+     it connects over Web Bluetooth. The firmware embeds it with scripts/embed_web.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="CodeShelf">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>CodeShelf Light</title>
+<style>
+:root {
+  --bg:#f2f2f7; --card:#fff; --label:#000; --secondary:rgba(60,60,67,.6); --tertiary:rgba(60,60,67,.3);
+  --sep:rgba(60,60,67,.29); --fill:rgba(120,120,128,.16); --blue:#007aff; --red:#ff3b30; --green:#34c759;
+  --bar:rgba(249,249,249,.85);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#000; --card:#1c1c1e; --label:#fff; --secondary:rgba(235,235,245,.6); --tertiary:rgba(235,235,245,.3);
+    --sep:rgba(84,84,88,.6); --fill:rgba(120,120,128,.32); --blue:#0a84ff; --red:#ff453a; --green:#30d158;
+    --bar:rgba(22,22,24,.85);
+  }
+}
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { margin:0; background:var(--bg); color:var(--label); }
+body { font:17px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+[hidden] { display:none !important; }
+button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
+
+.page { max-width:640px; margin:0 auto; padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 96px); }
+.large-title { font-size:34px; font-weight:700; letter-spacing:.01em; margin:12px 4px 8px; }
+.group-title { font-size:13px; text-transform:uppercase; color:var(--secondary); margin:28px 16px 7px; }
+.group-footer { font-size:13px; color:var(--secondary); margin:7px 16px 0; }
+.list { list-style:none; margin:0; padding:0; background:var(--card); border-radius:10px; overflow:hidden; }
+.row { display:flex; align-items:center; gap:12px; min-height:44px; padding:6px 16px; position:relative; width:100%; text-align:left; }
+.row + .row::before { content:""; position:absolute; top:0; right:0; left:16px; border-top:.5px solid var(--sep); }
+.row.indent + .row::before, .row + .row.indent::before { left:58px; }
+.list > li + li > .row::before { content:""; position:absolute; top:0; right:0; left:16px; border-top:.5px solid var(--sep); }
+.list > li + li > .row.indent::before { left:58px; }
+.row .grow { flex:1; min-width:0; }
+.row .value { color:var(--secondary); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.row .sub { font-size:13px; color:var(--secondary); }
+.row.tap:active { background:var(--fill); }
+.chev::after { content:""; width:8px; height:8px; border:solid var(--tertiary); border-width:2px 2px 0 0; transform:rotate(45deg); margin-right:4px; flex:none; }
+.check::after { content:""; width:6px; height:12px; border:solid var(--blue); border-width:0 2.5px 2.5px 0; transform:rotate(45deg); margin:-4px 6px 0 0; flex:none; }
+.destructive { color:var(--red); justify-content:center; }
+.action { color:var(--blue); justify-content:center; }
+.icon { width:30px; height:30px; border-radius:7px; display:grid; place-items:center; color:#fff; flex:none; }
+.icon svg { width:19px; height:19px; fill:currentColor; }
+
+.switch { position:relative; width:51px; height:31px; flex:none; }
+.switch input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; z-index:1; }
+.switch span { position:absolute; inset:0; background:var(--fill); border-radius:16px; transition:background .25s; }
+.switch span::after { content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff;
+  box-shadow:0 3px 8px rgba(0,0,0,.15), 0 1px 1px rgba(0,0,0,.16); transition:transform .25s; }
+.switch input:checked + span { background:var(--green); }
+.switch input:checked + span::after { transform:translateX(20px); }
+
+input[type=range] { -webkit-appearance:none; appearance:none; flex:1; height:4px; border-radius:2px; margin:14px 0;
+  background:linear-gradient(var(--blue), var(--blue)) 0 / var(--p, 50%) 100% no-repeat, var(--fill); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:28px; height:28px; border-radius:50%; background:#fff;
+  box-shadow:0 3px 8px rgba(0,0,0,.15), 0 0 0 .5px rgba(0,0,0,.04); }
+input[type=range]::-moz-range-thumb { width:28px; height:28px; border:0; border-radius:50%; background:#fff; box-shadow:0 3px 8px rgba(0,0,0,.15); }
+.row-input { flex:1; min-width:0; font:inherit; color:var(--secondary); background:none; border:0; text-align:right; outline:none; }
+.row-input:focus { color:var(--label); }
+select.row-input { -webkit-appearance:none; appearance:none; cursor:pointer; text-align-last:right; flex:none; }
+.slider-icon { color:var(--secondary); font-size:15px; width:22px; text-align:center; }
+
+/* Glowing dot showing a state's pattern */
+.orb { border-radius:50%; flex:none; background:#000; }
+.orb.sm { width:30px; height:30px; }
+.hero { display:flex; flex-direction:column; align-items:center; padding:24px 16px 20px; }
+.hero .orb { width:132px; height:132px; margin-bottom:18px; }
+.hero-label { font-size:22px; font-weight:600; }
+.hero-sub { font-size:15px; color:var(--secondary); margin-top:4px; text-align:center; }
+
+/* Bottom tab bar */
+.tabbar { position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center; background:var(--bar);
+  -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px);
+  border-top:.5px solid var(--sep); padding-bottom:env(safe-area-inset-bottom); z-index:5; }
+.tabbar button { flex:1; max-width:160px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:7px 0 5px; font-size:10px; font-weight:500; color:var(--secondary); }
+.tabbar button svg { width:26px; height:26px; fill:currentColor; }
+.tabbar button.on { color:var(--blue); }
+
+/* Subpage (editing a state) */
+.sheet { position:fixed; inset:0; background:var(--bg); overflow-y:auto; z-index:10; transform:translateX(100%); transition:transform .3s cubic-bezier(.2,.8,.2,1); }
+.sheet.open { transform:none; }
+.navbar { position:sticky; top:0; display:flex; align-items:center; height:calc(env(safe-area-inset-top) + 44px); padding:env(safe-area-inset-top) 8px 0;
+  background:var(--bar); -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px); border-bottom:.5px solid var(--sep); z-index:1; }
+.navbar .back { color:var(--blue); display:flex; align-items:center; gap:4px; padding:8px; }
+.navbar .back::before { content:""; width:11px; height:11px; border:solid var(--blue); border-width:0 0 3px 3px; transform:rotate(45deg); margin-left:6px; }
+.navbar .title { position:absolute; left:50%; transform:translateX(-50%); font-weight:600; }
+.swatches { display:grid; grid-template-columns:repeat(auto-fill, minmax(38px, 1fr)); gap:12px; padding:14px 16px; }
+.swatch { aspect-ratio:1; border-radius:50%; box-shadow:inset 0 0 0 .5px rgba(0,0,0,.15); }
+.swatch.on { box-shadow:0 0 0 2px var(--card), 0 0 0 4.5px var(--blue); }
+.color-well { position:relative; width:30px; height:30px; border-radius:50%; overflow:hidden; flex:none;
+  background:conic-gradient(red, yellow, lime, cyan, blue, magenta, red); }
+.color-well input { position:absolute; inset:-8px; width:46px; height:46px; opacity:0; cursor:pointer; }
+
+/* Connecting (BLE) */
+.connect { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px; gap:14px; }
+.connect .orb { width:96px; height:96px; margin-bottom:10px; }
+.btn { background:var(--blue); color:#fff; font-weight:600; border-radius:14px; padding:15px 28px; min-width:240px; }
+.btn:disabled { opacity:.5; }
+.muted { color:var(--secondary); font-size:15px; max-width:340px; }
+.toast { position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 72px); transform:translateX(-50%); background:rgba(30,30,30,.92); color:#fff;
+  padding:10px 16px; border-radius:12px; font-size:15px; z-index:20; max-width:calc(100% - 32px); text-align:center; }
+progress { width:100%; height:4px; -webkit-appearance:none; appearance:none; border:0; border-radius:2px; background:var(--fill); }
+progress::-webkit-progress-bar { background:var(--fill); border-radius:2px; }
+progress::-webkit-progress-value { background:var(--blue); border-radius:2px; }
+progress::-moz-progress-bar { background:var(--blue); }
+</style>
+</head>
+<body>
+
+<!-- Connect over Bluetooth when the page is not served by the device -->
+<div class="connect" id="connectView" hidden>
+  <div class="orb" data-preview="waiting"></div>
+  <div class="large-title" style="margin:0">CodeShelf Light</div>
+  <div class="muted" id="connectMsg">Connect to the light over Bluetooth.</div>
+  <button class="btn" id="connectBtn">Connect</button>
+</div>
+
+<div id="appView" hidden>
+  <!-- Tab: Status -->
+  <section class="page" data-tab="status">
+    <div class="large-title" id="devName">…</div>
+    <div class="list hero">
+      <div class="orb" id="heroOrb"></div>
+      <div class="hero-label" id="stateLabel">…</div>
+      <div class="hero-sub" id="stateSub"></div>
+    </div>
+    <div class="group-title">Brightness</div>
+    <ul class="list">
+      <li class="row"><span class="slider-icon">☼</span><input type="range" id="bright" min="1" max="255"><span class="slider-icon" style="font-size:22px">☀</span></li>
+    </ul>
+    <div class="group-title">Set manually</div>
+    <ul class="list" id="quickStates"></ul>
+    <div class="group-footer">The extension overrides this as soon as an agent does something.</div>
+  </section>
+
+  <!-- Tab: Lights -->
+  <section class="page" data-tab="lights" hidden>
+    <div class="large-title">Lights</div>
+    <div class="group-title">States</div>
+    <ul class="list" id="stateList"></ul>
+    <div class="group-footer">Pick a color, pattern and speed for each agent state. Changes apply right away.</div>
+    <div class="group-title">Behavior</div>
+    <ul class="list">
+      <li class="row"><span class="grow">Fade between colors</span><span class="value" id="fadeVal"></span></li>
+      <li class="row"><input type="range" id="fade" min="0" max="2000" step="50"></li>
+      <li class="row"><span class="grow">Turn off without signal</span>
+        <select class="row-input" id="timeout">
+          <option value="0">Never</option><option value="15">15 s</option><option value="30">30 s</option>
+          <option value="60">1 min</option><option value="300">5 min</option><option value="900">15 min</option>
+        </select>
+      </li>
+    </ul>
+    <div class="group-footer">If the extension sends nothing for this long (computer asleep), the light turns off. States set by hand stay.</div>
+  </section>
+
+  <!-- Tab: Settings -->
+  <section class="page" data-tab="settings" hidden>
+    <div class="large-title">Settings</div>
+    <div class="group-title">Device</div>
+    <ul class="list">
+      <li class="row"><span>Name</span><input class="row-input" id="name" maxlength="29" enterkeyhint="done" autocomplete="off"></li>
+      <li class="row"><span class="grow">Address</span><span class="value" id="hostVal"></span></li>
+    </ul>
+    <div class="group-title">Connections</div>
+    <ul class="list">
+      <li class="row indent"><span class="icon" style="background:var(--blue)"><svg viewBox="0 0 24 24"><path d="M12 18.5a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5Zm0-5c2 0 3.8.8 5.1 2.1l-1.6 1.6A5 5 0 0 0 12 15.6a5 5 0 0 0-3.5 1.6l-1.6-1.6A7.2 7.2 0 0 1 12 13.5Zm0-5c3.4 0 6.4 1.4 8.6 3.6L19 13.7A9.9 9.9 0 0 0 12 10.7c-2.7 0-5.2 1.1-7 3l-1.6-1.6A12 12 0 0 1 12 8.5Zm0-5c4.7 0 9 1.9 12 5L22.4 10A14.6 14.6 0 0 0 12 5.7C8 5.7 4.4 7.3 1.6 10L0 8.5c3.1-3.1 7.3-5 12-5Z"/></svg></span>
+        <span class="grow">WiFi</span><label class="switch"><input type="checkbox" id="wifiToggle"><span></span></label></li>
+      <li><button class="row tap chev" id="wifiNetBtn"><span style="flex:none">WiFi network</span><span class="value grow" id="wifiNetVal"></span></button></li>
+      <li class="row indent"><span class="icon" style="background:var(--blue)"><svg viewBox="0 0 24 24"><path d="M11 2h1l6 5.5-4.6 4.5 4.6 4.5L12 22h-1v-7.6l-4.3 4.2-1.4-1.4L10.6 12 5.3 6.8l1.4-1.4L11 9.6V2Zm2 2.6v4.8l2.5-2.4L13 4.6Zm0 10v4.8l2.5-2.4-2.5-2.4Z"/></svg></span>
+        <span class="grow">Bluetooth</span><label class="switch"><input type="checkbox" id="bleToggle"><span></span></label></li>
+    </ul>
+    <div class="group-footer">Changing the name or turning WiFi or Bluetooth on or off restarts the light. At least one stays on, and USB always works.</div>
+    <div class="group-title">Security</div>
+    <ul class="list">
+      <li class="row"><span>Password</span><input class="row-input" id="adminPass" type="password" maxlength="63" autocomplete="new-password" enterkeyhint="done"></li>
+      <li class="row destructive tap" id="adminClear" hidden>Remove password</li>
+    </ul>
+    <div class="group-footer">Protects this page, the settings and firmware updates (user <b>admin</b>). Agent status updates from the extension stay open.</div>
+    <div class="group-title">About</div>
+    <ul class="list" id="info"></ul>
+    <div data-http>
+      <div class="group-title">Firmware update</div>
+      <ul class="list">
+        <li class="row"><input type="file" id="fwFile" accept=".bin" hidden><button class="row tap grow" id="fwPick" style="padding:0"><span class="grow" id="fwName">Choose firmware.bin</span></button></li>
+        <li class="row" id="fwProgRow" hidden><progress id="fwProg" max="100" value="0"></progress></li>
+        <li class="row action tap" id="fwUpload" hidden>Upload</li>
+      </ul>
+      <div class="group-footer">firmware.bin from a release. The light glows purple during the upload and keeps its settings.</div>
+    </div>
+    <div class="group-title"></div>
+    <ul class="list">
+      <li class="row destructive tap" id="rebootBtn">Restart</li>
+      <li class="row destructive tap" id="disconnectBtn" data-ble hidden>Disconnect</li>
+    </ul>
+  </section>
+
+  <!-- Subpage: editing one state -->
+  <div class="sheet" id="sheet">
+    <div class="navbar"><button class="back" id="sheetBack">Lights</button><span class="title" id="sheetTitle"></span></div>
+    <div class="page" style="padding-top:8px">
+      <div class="list hero"><div class="orb" id="sheetOrb"></div><div class="hero-sub" id="sheetDesc"></div></div>
+      <div class="group-title">Color</div>
+      <ul class="list">
+        <li class="swatches" id="swatches"></li>
+        <li class="row"><span class="grow">Custom color</span><span class="value" id="hexVal"></span><span class="color-well"><input type="color" id="colorPick"></span></li>
+      </ul>
+      <div class="group-title">Pattern</div>
+      <ul class="list" id="patternList"></ul>
+      <div class="group-title" id="speedTitle">Speed</div>
+      <ul class="list" id="speedGroup">
+        <li class="row"><span class="slider-icon">🐢</span><input type="range" id="speed" min="0" max="100"><span class="slider-icon">🐇</span></li>
+      </ul>
+      <div class="group-footer">The light previews this state while you edit it.</div>
+      <div class="group-title"></div>
+      <ul class="list"><li class="row action tap" id="tryBtn">Set as current state</li></ul>
+    </div>
+  </div>
+
+  <!-- Subpage: WiFi network -->
+  <div class="sheet" id="wifiSheet">
+    <div class="navbar"><button class="back" id="wifiBack">Settings</button><span class="title">WiFi network</span></div>
+    <div class="page" style="padding-top:8px">
+      <div class="group-title">Network</div>
+      <ul class="list">
+        <li class="row"><span>Name</span><input class="row-input" id="wifiSsid" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false"></li>
+        <li class="row"><span>Password</span><input class="row-input" id="wifiPass" type="password" maxlength="63" autocomplete="off" placeholder="None"></li>
+      </ul>
+      <div class="group-footer" id="wifiStateText"></div>
+      <div data-http>
+        <div class="group-title" id="netTitle">Networks nearby</div>
+        <ul class="list" id="netList"></ul>
+      </div>
+      <div class="group-title"></div>
+      <ul class="list"><li class="row action tap" id="wifiJoin">Join</li></ul>
+      <div class="group-footer">The light reconnects without restarting. On a different network it gets a new address there: http://<span id="wifiHost"></span>.local</div>
+    </div>
+  </div>
+
+  <nav class="tabbar">
+    <button data-go="status" class="on"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2Zm-3 18h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-1Z"/></svg>Status</button>
+    <button data-go="lights"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A4.6 4.6 0 0 0 22 10.8C22 5.9 17.5 2 12 2ZM6.5 13a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>Lights</button>
+    <button data-go="settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6c-.6.3-1.2.6-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.6h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5-2.3-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>Settings</button>
+  </nav>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+// ---------- States and patterns (same as the firmware: config.cpp, led.cpp) ----------
+const STATES = [
+  { key:'working',   code:'T', name:'Working',          desc:'The agent is working or thinking' },
+  { key:'waiting',   code:'G', name:'Waiting for you', desc:'The agent is done and waiting for a prompt' },
+  { key:'attention', code:'Y', name:'Needs attention', desc:'A permission request or a question' },
+  { key:'error',     code:'R', name:'Error',           desc:'The agent stopped because of an error' },
+  { key:'off',       code:'O', name:'Off',             desc:'No agent or no signal' },
+];
+const PATTERNS = { solid:'Solid', breathe:'Breathe', blink:'Blink', double:'Double blink', flash:'Flash', rainbow:'Rainbow' };
+const SWATCHES = ['#ff0000','#ff4600','#ff8c00','#ffd000','#00ff00','#00ffa0','#00c8ff','#0000ff','#7a00ff','#ff00c8','#ffffff','#000000'];
+const byCode = (c) => STATES.find((s) => s.code === c) || STATES[4];
+const byKey = (k) => STATES.find((s) => s.key === k);
+
+function patternLevel(p, t) {
+  if (p === 'breathe') { const x = 0.5 - 0.5 * Math.cos(2 * Math.PI * t); return 0.12 + 0.88 * x * x; }
+  if (p === 'blink') return t < 0.5 ? 1 : 0;
+  if (p === 'double') return (t < 0.1 || (t >= 0.2 && t < 0.3)) ? 1 : 0;
+  if (p === 'flash') return t < 0.15 ? Math.sin(Math.PI * t / 0.15) : 0;
+  return 1;
+}
+function hexToRgb(h) { const v = parseInt(h.slice(1), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; }
+function styleColor([hex, pattern, period], now) {
+  const t = (now % period) / period;
+  if (pattern === 'rainbow') return [Math.abs(t * 6 - 3) - 1, 2 - Math.abs(t * 6 - 2), 2 - Math.abs(t * 6 - 4)].map((x) => 255 * Math.min(1, Math.max(0, x)));
+  const l = patternLevel(pattern, t);
+  return hexToRgb(hex).map((x) => x * l);
+}
+// Speed 0..100 <-> period 6000..300 ms (logarithmic)
+const speedToPeriod = (s) => Math.round(6000 * Math.pow(300 / 6000, s / 100));
+const periodToSpeed = (p) => Math.round(100 * Math.log(p / 6000) / Math.log(300 / 6000));
+
+// ---------- Link: HTTP from the device or Web Bluetooth ----------
+const WRITE_ONLY = ['preview', 'wifiPassword', 'adminPassword']; // keys the light accepts but never sends back
+const UUID = (n) => `c1a0de0${n}-0000-4000-8000-000000000000`;
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+const httpLink = {
+  kind: 'wifi',
+  async status() { return (await fetch('/status', { cache:'no-store' })).json(); },
+  async config() { return (await fetch('/config', { cache:'no-store' })).json(); },
+  async save(patch) {
+    const r = await fetch('/config', { method:'POST', body:JSON.stringify(patch) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    return j;
+  },
+  setMode(code) { return fetch('/set?manual=1&c=' + code); },
+  setBrightness(v) { return fetch('/brightness?v=' + v); },
+  reboot() { return fetch('/reboot', { method:'POST' }); },
+  async scan() {
+    for (let i = 0; i < 15; i++) {
+      const r = await fetch('/scan', { cache:'no-store' });
+      if (r.status === 200) return r.json();
+      await new Promise((ok) => setTimeout(ok, 1000));
+    }
+    return [];
+  },
+};
+
+const bleLink = {
+  kind: 'ble', chars: {}, device: null,
+  async connect() {
+    this.device = await navigator.bluetooth.requestDevice({ filters: [{ services: [UUID(0)] }] });
+    this.device.addEventListener('gattserverdisconnected', () => onDisconnected());
+    const svc = await (await this.device.gatt.connect()).getPrimaryService(UUID(0));
+    for (const [k, n] of [['mode', 1], ['bright', 2], ['config', 3], ['status', 4], ['command', 5]]) this.chars[k] = await svc.getCharacteristic(UUID(n));
+    this.chars.mode.addEventListener('characteristicvaluechanged', (e) => { if (state.status) { state.status.mode = dec.decode(e.target.value); render(); } });
+    this.chars.bright.addEventListener('characteristicvaluechanged', (e) => { if (state.status) { state.status.brightness = +dec.decode(e.target.value); renderBrightness(); } });
+    await this.chars.mode.startNotifications();
+    await this.chars.bright.startNotifications();
+  },
+  async read(k) { return JSON.parse(dec.decode(await this.chars[k].readValue())); },
+  status() { return this.read('status'); },
+  config() { return this.read('config'); },
+  async save(patch) {
+    const before = state.config;
+    await this.chars.config.writeValue(enc.encode(JSON.stringify(patch)));
+    const cfg = await this.read('config');
+    const reboot = cfg.name !== before.name || cfg.wifi !== before.wifi || cfg.ble !== before.ble;
+    const applied = Object.keys(patch).filter((k) => !WRITE_ONLY.includes(k)).every((k) => JSON.stringify(cfg[k]) === JSON.stringify(k === 'states' ? { ...cfg.states, ...patch.states } : patch[k]));
+    if (!applied) throw new Error('The light rejected the setting');
+    return { reboot, config: cfg };
+  },
+  setMode(code) { return this.chars.mode.writeValue(enc.encode(code)); },
+  setBrightness(v) { return this.chars.bright.writeValue(enc.encode(String(v))); },
+  reboot() { return this.chars.command.writeValue(enc.encode('reboot')); },
+};
+
+let link = null;
+const state = { status:null, config:null, editing:null };
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+const WIFI_STATES = { connected:'Connected', connecting:'Connecting …', 'wrong-password':'Wrong password', 'not-found':'Network not found', unconfigured:'Not set', off:'WiFi is off' };
+
+function toast(msg, ms = 2500) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { t.hidden = true; }, ms);
+}
+
+// Save part of the settings; changing the name / connections restarts the light
+async function save(patch) {
+  try {
+    const res = await link.save(patch);
+    state.config = res.config;
+    render();
+    if (res.reboot) afterReboot(res.config);
+  } catch (e) {
+    await saveFailed(e);
+  }
+}
+async function saveFailed(e) {
+  toast(e.message || 'Could not save');
+  state.config = await link.config();
+  render();
+}
+
+// Sends right away. While a request is in flight, only the newest value follows, so sliders stay live without queueing up.
+function live(send) {
+  let busy = false, next = null;
+  return (arg) => {
+    next = arg;
+    if (busy) return;
+    busy = true;
+    (async () => {
+      while (next !== null) {
+        const a = next;
+        next = null;
+        try { await send(a); } catch (e) { /* the next value or refresh fixes it */ }
+      }
+      busy = false;
+    })();
+  };
+}
+// One sender per kind of change; patch() is read at send time, so it carries the newest local value.
+// The page already shows the change, so the response is not rendered (it could be older than a slider being dragged).
+const senders = {};
+function liveSave(kind, patch) {
+  senders[kind] = senders[kind] || live(async (p) => { try { await link.save(p()); } catch (e) { await saveFailed(e); } });
+  senders[kind](patch);
+}
+const liveBrightness = live((v) => link.setBrightness(v));
+const preview = (key) => liveSave('preview', () => ({ preview: key }));
+
+function afterReboot(cfg) {
+  if (link.kind === 'wifi') {
+    toast('Restarting …', 8000);
+    if (!cfg.wifi) { setTimeout(() => toast('WiFi is off. Control the light over Bluetooth.', 10000), 1500); return; }
+    setTimeout(() => { location.href = `http://${cfg.host}.local/`; }, 7000);
+  } else {
+    toast('Restarting … connect again.', 5000);
+  }
+}
+
+// ---------- Rendering ----------
+function render() {
+  const s = state.status, c = state.config;
+  if (!s || !c) return;
+  const cur = byCode(s.mode);
+  $('devName').textContent = c.name;
+  $('stateLabel').textContent = cur.name;
+  $('stateSub').textContent = s.lastCommandAgo < 0 ? 'No command yet' :
+    `Last command ${s.lastCommandAgo} s ago · ${({ wifi:'agent over WiFi', usb:'agent over USB', ble:'Bluetooth', web:'manual' })[s.source] || s.source}`;
+  $('heroOrb').dataset.preview = cur.key;
+  renderBrightness();
+
+  $('quickStates').innerHTML = STATES.map((st) =>
+    `<li><button class="row tap indent ${st.code === s.mode ? 'check' : ''}" data-set="${st.code}"><span class="orb sm" data-preview="${st.key}"></span><span class="grow">${st.name}</span></button></li>`).join('');
+  $('stateList').innerHTML = STATES.map((st) => {
+    const [hex, pat] = c.states[st.key];
+    return `<li><button class="row tap indent chev" data-edit="${st.key}"><span class="orb sm" data-preview="${st.key}"></span>
+      <span class="grow"><div>${st.name}</div><div class="sub">${PATTERNS[pat]}${pat === 'rainbow' ? '' : ' · ' + hex.toUpperCase()}</div></span></button></li>`;
+  }).join('');
+
+  if (!$('fade').dataset.dragging) { $('fade').value = c.fade; setRangeFill($('fade')); }
+  $('fadeVal').textContent = c.fade ? (c.fade / 1000).toFixed(2).replace(/0$/, '') + ' s' : 'None';
+  if (![...$('timeout').options].some((o) => +o.value === c.timeout)) $('timeout').add(new Option(c.timeout + ' s', c.timeout));
+  $('timeout').value = c.timeout;
+
+  if (document.activeElement !== $('name')) $('name').value = c.name;
+  $('hostVal').textContent = c.host + '.local';
+  $('wifiToggle').checked = c.wifi;
+  $('wifiNetVal').textContent = c.ssid ? `${c.ssid} · ${WIFI_STATES[s.wifiState] || s.wifiState}` : 'Not set';
+  $('wifiStateText').textContent = c.ssid ? `${c.ssid}: ${WIFI_STATES[s.wifiState] || s.wifiState}` : '';
+  $('wifiHost').textContent = c.host;
+  if (document.activeElement !== $('adminPass')) { $('adminPass').value = ''; $('adminPass').placeholder = c.auth ? 'Set · type to change' : 'Not set'; }
+  $('adminClear').hidden = !c.auth;
+  $('bleToggle').checked = c.ble;
+  const rssi = s.rssi ? `${s.rssi} dBm` : '—';
+  const rows = [
+    ['Firmware', s.version], ['Build', s.build], ['WiFi', c.wifi ? (c.ssid ? `${c.ssid} (${WIFI_STATES[s.wifiState] || s.wifiState})` : 'not set') : 'off'],
+    ['IP', c.wifi ? s.ip : '—'], ['Signal', c.wifi ? rssi : '—'], ['Bluetooth', c.ble ? `${s.bleClients} connected` : 'off'],
+    ['Uptime', fmtUptime(s.uptime)], ['Free RAM', Math.round(s.heap / 1024) + ' KB'], ['Connected via', link.kind === 'wifi' ? 'WiFi' : 'Bluetooth'], ['MAC', s.mac],
+  ];
+  $('info').innerHTML = rows.map(([k, v]) => `<li class="row"><span class="grow">${k}</span><span class="value">${esc(v)}</span></li>`).join('');
+  if (state.editing) renderSheet();
+}
+
+function renderBrightness() {
+  if ($('bright').dataset.dragging) return;
+  $('bright').value = state.status.brightness;
+  setRangeFill($('bright'));
+}
+
+function renderSheet() {
+  const st = byKey(state.editing), [hex, pat, period] = state.config.states[st.key];
+  $('sheetTitle').textContent = st.name;
+  $('sheetDesc').textContent = st.desc;
+  $('sheetOrb').dataset.preview = st.key;
+  $('swatches').innerHTML = SWATCHES.map((c) => `<button class="swatch ${c === hex ? 'on' : ''}" data-color="${c}" style="background:${c}" aria-label="${c}"></button>`).join('');
+  $('hexVal').textContent = hex.toUpperCase();
+  $('colorPick').value = hex;
+  $('patternList').innerHTML = Object.entries(PATTERNS).map(([k, n]) =>
+    `<li><button class="row tap ${k === pat ? 'check' : ''}" data-pattern="${k}"><span class="grow">${n}</span></button></li>`).join('');
+  const hasSpeed = pat !== 'solid';
+  $('speedTitle').hidden = $('speedGroup').hidden = !hasSpeed;
+  if (!$('speed').dataset.dragging) { $('speed').value = periodToSpeed(period); setRangeFill($('speed')); }
+}
+
+function setRangeFill(r) { r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min) * 100) + '%'); }
+function fmtUptime(s) { const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return (d ? d + ' d ' : '') + h + ' h ' + m + ' min'; }
+
+// Animate every dot with its pattern (a preview of what the light does)
+function animate(now) {
+  const styles = state.config ? state.config.states : null;
+  document.querySelectorAll('[data-preview]').forEach((el) => {
+    const style = styles ? styles[el.dataset.preview] : (el.dataset.preview === 'waiting' ? ['#34c759', 'breathe', 3000] : null);
+    if (!style) return;
+    const [r, g, b] = styleColor(style, now);
+    const big = el.offsetWidth > 60;
+    const glow = Math.max(r, g, b) > 8 ? `0 0 ${big ? 48 : 10}px rgba(${r},${g},${b},.55)` : 'none';
+    el.style.background = `radial-gradient(circle at 35% 30%, rgba(255,255,255,.35), transparent 60%), rgb(${r},${g},${b})`;
+    el.style.boxShadow = glow + ', inset 0 0 0 .5px rgba(127,127,127,.35)';
+  });
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+// ---------- Events ----------
+document.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('[data-go]').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('[data-tab]').forEach((t) => { t.hidden = t.dataset.tab !== b.dataset.go; });
+  window.scrollTo(0, 0);
+});
+
+document.addEventListener('click', (e) => {
+  const set = e.target.closest('[data-set]');
+  if (set) { link.setMode(set.dataset.set); state.status.mode = set.dataset.set; render(); }
+  const edit = e.target.closest('[data-edit]');
+  if (edit) { state.editing = edit.dataset.edit; renderSheet(); $('sheet').classList.add('open'); preview(state.editing); }
+  const color = e.target.closest('[data-color]');
+  if (color) updateStyle(0, color.dataset.color);
+  const pat = e.target.closest('[data-pattern]');
+  if (pat) updateStyle(1, pat.dataset.pattern);
+});
+
+function updateStyle(index, value) {
+  const key = state.editing, style = [...state.config.states[key]];
+  style[index] = value;
+  state.config.states[key] = style;
+  renderSheet();
+  render();
+  liveSave('style:' + key, () => ({ states: { [key]: state.config.states[key] }, preview: state.editing === key ? key : undefined }));
+}
+
+$('sheetBack').onclick = () => { $('sheet').classList.remove('open'); state.editing = null; preview(''); };
+$('colorPick').oninput = (e) => updateStyle(0, e.target.value);
+$('speed').oninput = (e) => { e.target.dataset.dragging = 1; setRangeFill(e.target); updateStyle(2, speedToPeriod(+e.target.value)); };
+$('speed').onchange = (e) => { delete e.target.dataset.dragging; };
+$('tryBtn').onclick = () => { const code = byKey(state.editing).code; link.setMode(code); state.status.mode = code; render(); toast('Set as current state'); };
+
+$('bright').oninput = (e) => { e.target.dataset.dragging = 1; setRangeFill(e.target); state.status.brightness = +e.target.value; liveBrightness(e.target.value); };
+$('bright').onchange = (e) => { delete e.target.dataset.dragging; };
+
+$('fade').oninput = (e) => { e.target.dataset.dragging = 1; setRangeFill(e.target); state.config.fade = +e.target.value; render(); liveSave('fade', () => ({ fade: state.config.fade })); };
+$('fade').onchange = (e) => { delete e.target.dataset.dragging; };
+$('timeout').onchange = (e) => save({ timeout: +e.target.value });
+
+$('name').onkeydown = (e) => { if (e.key === 'Enter') e.target.blur(); };
+$('name').onchange = (e) => {
+  const name = e.target.value.trim();
+  if (!name || name === state.config.name) { e.target.value = state.config.name; return; }
+  if (confirm(`Rename to "${name}"? The light will restart.`)) save({ name });
+  else e.target.value = state.config.name;
+};
+for (const [id, key, label] of [['wifiToggle', 'wifi', 'WiFi'], ['bleToggle', 'ble', 'Bluetooth']]) {
+  $(id).onchange = (e) => {
+    const on = e.target.checked;
+    const other = key === 'wifi' ? state.config.ble : state.config.wifi;
+    if (!on && !other) { e.target.checked = true; toast('At least one connection must stay on'); return; }
+    const losing = !on && link.kind === key;
+    const msg = `Turn ${label} ${on ? 'on' : 'off'}? The light will restart.` + (losing ? `\n\nThis page is connected over ${label}, so it will disconnect.` : '');
+    if (confirm(msg)) save({ [key]: on });
+    else e.target.checked = !on;
+  };
+}
+
+$('adminPass').onkeydown = (e) => { if (e.key === 'Enter') e.target.blur(); };
+$('adminPass').onchange = (e) => {
+  const pw = e.target.value;
+  e.target.value = '';
+  if (!pw) return;
+  if (confirm('Set the page password? Sign in as "admin" with it from now on.')) save({ adminPassword: pw });
+};
+$('adminClear').onclick = () => { if (confirm('Remove the page password?')) save({ adminPassword: '' }); };
+
+$('wifiNetBtn').onclick = () => {
+  $('wifiSsid').value = state.config.ssid || '';
+  $('wifiPass').value = '';
+  $('netList').innerHTML = '';
+  $('wifiSheet').classList.add('open');
+  if (link.kind === 'wifi') scanNetworks();
+};
+$('wifiBack').onclick = () => $('wifiSheet').classList.remove('open');
+async function scanNetworks() {
+  $('netTitle').textContent = 'Networks nearby · scanning …';
+  let list = [];
+  try { list = await link.scan(); } catch (e) { /* keep the field for typing */ }
+  $('netTitle').textContent = 'Networks nearby';
+  $('netList').innerHTML = list.map((n) => `<li><button class="row tap ${n.ssid === $('wifiSsid').value ? 'check' : ''}" data-ssid="${esc(n.ssid)}">
+    <span class="grow">${esc(n.ssid)}</span><span class="value">${n.secure ? '🔒 ' : ''}${n.rssi} dBm</span></button></li>`).join('') ||
+    '<li class="row"><span class="sub">No networks found</span></li>';
+}
+document.addEventListener('click', (e) => {
+  const net = e.target.closest('[data-ssid]');
+  if (!net) return;
+  $('wifiSsid').value = net.dataset.ssid;
+  document.querySelectorAll('[data-ssid]').forEach((b) => b.classList.toggle('check', b === net));
+  $('wifiPass').focus();
+});
+$('wifiJoin').onclick = async () => {
+  const ssid = $('wifiSsid').value.trim(), pass = $('wifiPass').value;
+  if (!ssid) { toast('Enter the network name'); return; }
+  if (pass && (pass.length < 8 || pass.length > 63)) { toast('WiFi passwords are 8-63 characters'); return; }
+  if (link.kind === 'wifi' && ssid !== state.config.ssid &&
+      !confirm(`Join "${ssid}"? This page loses the connection. On that network, open http://${state.config.host}.local`)) return;
+  await save({ ssid, wifiPassword: pass });
+  $('wifiPass').value = '';
+  toast(`Joining ${ssid} …`);
+};
+
+$('rebootBtn').onclick = () => { if (confirm('Restart the light?')) { link.reboot(); afterReboot({ ...state.config }); } };
+$('disconnectBtn').onclick = () => bleLink.device && bleLink.device.gatt.disconnect();
+
+$('fwPick').onclick = () => $('fwFile').click();
+$('fwFile').onchange = () => {
+  const f = $('fwFile').files[0];
+  $('fwName').textContent = f ? f.name : 'Choose firmware.bin';
+  $('fwUpload').hidden = !f;
+};
+$('fwUpload').onclick = () => {
+  const fd = new FormData();
+  fd.append('firmware', $('fwFile').files[0]);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/update');
+  $('fwProgRow').hidden = false;
+  $('fwUpload').hidden = true;
+  xhr.upload.onprogress = (e) => { $('fwProg').value = e.loaded / e.total * 100; };
+  xhr.onload = () => {
+    if (xhr.status === 200) { toast('Uploaded. Restarting …', 8000); setTimeout(() => location.reload(), 8000); }
+    else { toast('Error: ' + xhr.responseText); $('fwUpload').hidden = false; }
+  };
+  xhr.onerror = () => { toast('Connection lost'); $('fwUpload').hidden = false; };
+  xhr.send(fd);
+};
+
+// ---------- Startup ----------
+async function refresh() {
+  try {
+    state.status = await link.status();
+    render();
+    if (state.editing) preview(state.editing); // keep the preview alive while the editor is open
+  } catch (e) { /* next time */ }
+}
+
+async function start(l) {
+  link = l;
+  document.querySelectorAll('[data-http]').forEach((el) => { el.hidden = l.kind !== 'wifi'; });
+  document.querySelectorAll('[data-ble]').forEach((el) => { el.hidden = l.kind !== 'ble'; });
+  state.config = await link.config();
+  state.status = await link.status();
+  $('connectView').hidden = true;
+  $('appView').hidden = false;
+  render();
+  clearInterval(start.timer);
+  start.timer = setInterval(refresh, l.kind === 'wifi' ? 2000 : 5000);
+}
+
+function onDisconnected() {
+  clearInterval(start.timer);
+  $('sheet').classList.remove('open');
+  $('wifiSheet').classList.remove('open');
+  state.editing = null;
+  $('appView').hidden = true;
+  $('connectView').hidden = false;
+  $('connectMsg').textContent = 'Disconnected.';
+}
+
+$('connectBtn').onclick = async () => {
+  if (!navigator.bluetooth) {
+    $('connectMsg').textContent = 'This browser has no Web Bluetooth. On iPhone open the page in the Bluefy app, elsewhere use Chrome.';
+    return;
+  }
+  $('connectBtn').disabled = true;
+  $('connectMsg').textContent = 'Connecting …';
+  try {
+    await bleLink.connect();
+    await start(bleLink);
+  } catch (e) {
+    $('connectMsg').textContent = e.message;
+  }
+  $('connectBtn').disabled = false;
+};
+
+(async () => {
+  // From the device: HTTP. Otherwise (GitHub Pages, a file, Bluefy): Bluetooth.
+  if (location.protocol.startsWith('http')) {
+    try {
+      const r = await fetch('/status', { cache:'no-store' });
+      if (r.ok && (await r.json()).version) return start(httpLink);
+    } catch (e) { /* not the device */ }
+  }
+  $('connectView').hidden = false;
+})();
+</script>
+</body>
+</html>

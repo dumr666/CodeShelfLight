@@ -1,0 +1,307 @@
+{
+  "name": "codeshelf-light",
+  "displayName": "CodeShelf Light",
+  "description": "Shows what your AI coding agents are doing (Claude Code, Gemini CLI, Copilot CLI, Cursor or your own) on CodeShelf Light RGB lights over WiFi or USB",
+  "version": "1.0.0",
+  "publisher": "codeshelf",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dumr666/codeshelf-light",
+    "directory": "extension"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "CodeShelf Light",
+      "properties": {
+        "codeshelfLight.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send agent status to the light"
+        },
+        "codeshelfLight.lights": {
+          "type": "array",
+          "scope": "application",
+          "default": [],
+          "markdownDescription": "Your lights. Add them with **CodeShelf Light: Add Light** (it finds lights on your network and USB). Each light shows the most important state of the sessions it follows: all of them, or only some `agents` and `projects`.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name shown in VS Code (renaming from VS Code also renames the light)"
+              },
+              "host": {
+                "type": "string",
+                "description": "Address on your network, e.g. codeshelf-light-1a2b.local or an IP"
+              },
+              "connection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "wifi",
+                  "usb"
+                ],
+                "default": "auto",
+                "enumDescriptions": [
+                  "WiFi, USB when WiFi does not answer",
+                  "Only WiFi",
+                  "Only USB"
+                ]
+              },
+              "serialPort": {
+                "type": "string",
+                "default": "auto",
+                "description": "USB serial port (e.g. /dev/ttyACM0, /dev/cu.usbmodem101, COM5) or 'auto'"
+              },
+              "password": {
+                "type": "string",
+                "description": "The light's page password, if you set one (needed to rename it from VS Code)"
+              },
+              "agents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Agent ids this light follows. Empty = all enabled agents"
+              },
+              "projects": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Project folders this light follows: paths (~ and * allowed) or folder names. Empty = all"
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true
+              }
+            }
+          }
+        },
+        "codeshelfLight.agents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "claude-code"
+          ],
+          "markdownDescription": "Agents that report their status. Presets: `claude-code`, `gemini-cli`, `copilot-cli`, `cursor`, plus the `id` of any agent in `#codeshelfLight.customAgents#`. Hooks are added and removed automatically."
+        },
+        "codeshelfLight.customAgents": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Your own agents. Each one maps the agent's hook events to light states (`working`, `attention`, `error`, `done`, `idle`, `end`). With `format` (`claude`, `cursor`, `copilot`) and `file` the hooks are installed for you; otherwise run **Copy Hook Command** and add it to the agent yourself. Example: `{ \"id\": \"my-agent\", \"name\": \"My Agent\", \"events\": { \"start\": \"working\", \"ask\": \"attention\", \"finish\": \"done\" } }`",
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[\\w.-]+$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "events": {
+                "type": "object",
+                "description": "event name -> state, or { \"by\": \"field\", \"cases\": { \"value\": \"state\" }, \"default\": \"state\" }"
+              },
+              "stdout": {
+                "type": "object",
+                "description": "event name (or \"default\") -> text the hook prints, if the agent requires output"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "claude",
+                  "cursor",
+                  "copilot"
+                ]
+              },
+              "file": {
+                "type": "string",
+                "description": "Settings file to install hooks into, e.g. ~/.claude/settings.json"
+              }
+            }
+          }
+        },
+        "codeshelfLight.priority": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "error",
+              "attention",
+              "working",
+              "done",
+              "idle"
+            ]
+          },
+          "default": [
+            "error",
+            "attention",
+            "working",
+            "done",
+            "idle"
+          ],
+          "markdownDescription": "When several sessions are open, the state listed first wins. For example put `attention` before `error` to always see when an agent needs you."
+        },
+        "codeshelfLight.codes": {
+          "type": "object",
+          "default": {
+            "working": "T",
+            "attention": "Y",
+            "error": "R",
+            "done": "G",
+            "idle": "G",
+            "off": "O"
+          },
+          "markdownDescription": "Light state sent for each agent state: `T` working, `G` waiting, `Y` needs you, `R` error, `O` off. Colors and patterns are set on the light's settings page."
+        },
+        "codeshelfLight.staleWorkingMinutes": {
+          "type": "number",
+          "default": 15,
+          "description": "A session stuck in 'working' with no hook events for this long (e.g. interrupted) is treated as done"
+        },
+        "codeshelfLight.doneToIdleMinutes": {
+          "type": "number",
+          "default": 0,
+          "description": "Minutes after which 'done' falls back to 'idle'. Both show 'waiting' by default, so this only matters with custom codes"
+        },
+        "codeshelfLight.nodePath": {
+          "type": "string",
+          "default": "node",
+          "description": "Node binary used by the hook command"
+        },
+        "codeshelfLight.host": {
+          "type": "string",
+          "default": "codeshelf-light.local",
+          "description": "Address of the light on your network (name.local or IP). Rename the light with the 'Rename Light' command.",
+          "deprecationMessage": "Moved to codeshelfLight.lights. Old values are migrated automatically."
+        },
+        "codeshelfLight.connection": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "wifi",
+            "usb"
+          ],
+          "default": "auto",
+          "description": "How to reach the light",
+          "deprecationMessage": "Moved to codeshelfLight.lights. Old values are migrated automatically."
+        },
+        "codeshelfLight.serialPort": {
+          "type": "string",
+          "default": "auto",
+          "description": "USB serial port of the light (e.g. /dev/ttyACM0, COM5) or 'auto' to detect an Espressif device",
+          "deprecationMessage": "Moved to codeshelfLight.lights. Old values are migrated automatically."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "codeshelfLight.menu",
+        "title": "Menu",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.addLight",
+        "title": "Add Light",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.configureLight",
+        "title": "Configure Light",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.removeLight",
+        "title": "Remove Light",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.openDevicePage",
+        "title": "Open Light Settings Page",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.selectAgents",
+        "title": "Choose Agents",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.showSessions",
+        "title": "Show Sessions",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.installHooks",
+        "title": "Install Hooks",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.uninstallHooks",
+        "title": "Uninstall All Hooks",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.copyHookCommand",
+        "title": "Copy Hook Command",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.test",
+        "title": "Test States",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.reset",
+        "title": "Reset Session States",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.toggle",
+        "title": "Enable/Disable",
+        "category": "CodeShelf Light"
+      },
+      {
+        "command": "codeshelfLight.showLog",
+        "title": "Show Log",
+        "category": "CodeShelf Light"
+      }
+    ]
+  },
+  "homepage": "https://github.com/dumr666/codeshelf-light#readme",
+  "bugs": {
+    "url": "https://github.com/dumr666/codeshelf-light/issues"
+  },
+  "keywords": [
+    "claude code",
+    "ai agent",
+    "status light",
+    "esp32",
+    "busy light",
+    "gemini",
+    "copilot",
+    "cursor"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "package": "npx --yes @vscode/vsce package --no-dependencies"
+  },
+  "icon": "icon.png"
+}

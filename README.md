@@ -1,109 +1,110 @@
-# CodeShelf Light: firmware
+<p align="center"><img src="docs/assets/icon-256.png" width="128" alt=""></p>
 
-Firmware for the CodeShelf Light, an ESP32-S3 Zero with one WS2812 RGB LED on GPIO21.
-The light shows the state of an AI coding agent. The CodeShelf Light VSCode extension sends it the state over WiFi, USB or Bluetooth.
+<h1 align="center">CodeShelf Light</h1>
 
-## Setup
+<p align="center">A desk light that shows what your AI coding agents are doing.<br>
+Blue while they work, green when they wait for you, amber when they need an answer, red when they fail.</p>
 
-1. Copy `include/secrets.h.example` to `include/secrets.h` and fill in your WiFi. The ESP32 supports 2.4 GHz networks only.
-   `secrets.h` is in `.gitignore`.
-2. The first flash goes over USB:
-   ```bash
-   pio run -e esp32-s3-devkitc-1 -t upload
-   ```
-3. Every later flash goes over WiFi:
-   ```bash
-   pio run -e ota -t upload
-   ```
-   If you rename the light, update `upload_port` in `platformio.ini`.
-   In VSCode, set the PlatformIO port to **Auto**. Otherwise PlatformIO passes the serial port and OTA fails.
+---
 
-The light starts as **CodeShelf Light** at `http://codeshelf-light.local/`.
+You start an agent, switch to something else, and come back too early or far too late.
+CodeShelf Light is a small RGB light next to your screen that tells you when to look.
+It works with Claude Code, Gemini CLI, GitHub Copilot CLI, Cursor and any tool that can run a command on an event.
 
-## Settings page and app
+- **One glance:** working, waiting, needs you, error. Several sessions at once show the most important one.
+- **Your colors:** pick a color, pattern (solid, breathe, blink, double blink, flash, rainbow) and speed for each state, from your phone.
+- **Several lights:** one per project, one per agent, or one on every desk.
+- **No cloud:** the light lives on your WiFi (or a USB cable). Nothing leaves your network.
+- **Cheap hardware:** an ESP32-S3 board with a built-in RGB LED, about €5.
 
-`web/index.html` is a single page styled like iOS settings, with three tabs:
+## What is in this repository
 
-- **Status**: the current state, brightness, and manual state selection
-- **Lights**: color, pattern (solid, breathe, blink, double blink, flash, rainbow), speed and fade for each state, and when to turn off without a signal
-- **Settings**: name, WiFi and Bluetooth on/off, device info, firmware upload, reboot
-
-The same file works over WiFi and over Bluetooth:
-
-- **WiFi**: open `http://<name>.local/`. The build embeds the page into the firmware (`scripts/embed_web.py` → `include/webpage.h`, gzipped).
-  On iPhone you can use **Share → Add to Home Screen** to get an app icon.
-- **Bluetooth**: open `web/index.html` from any HTTPS address, for example GitHub Pages.
-  Safari does not support Web Bluetooth, so on iPhone open it in the **Bluefy** app. On Android or desktop, use Chrome.
-  The page sees that it was not served by the light and offers to connect over Bluetooth.
-
-Colors, patterns, speed, fade and brightness apply as you change them, with no save button.
-While you edit a state, the light previews it.
-The light writes settings to flash 2 s after the last change, so dragging a slider does not wear it out.
-
-Changing the name, WiFi or Bluetooth restarts the light.
-At least one of WiFi and Bluetooth stays on. USB always works.
-
-## States
-
-| Code | State | Default |
-|---|---|---|
-| `T` | working | blue, breathing |
-| `G` | waiting | green |
-| `Y` | attention (needs you) | amber |
-| `R` | error | red |
-| `O` | off | off |
-
-Purple means a firmware update is in progress.
-Colors fade into each other over the fade time, 0.6 s by default.
-If the extension sends nothing for the timeout (30 s by default), the light turns off.
-States set by hand from the page or over Bluetooth stay until something changes them.
-
-## HTTP API
-
-| Request | Description |
+| Folder | What it is |
 |---|---|
-| `GET /set?c=T` or `/set?s=working` | Set the state. Add `manual=1` to exempt it from the timeout |
-| `GET /status` | JSON: state, name, IP, RSSI, Bluetooth clients, brightness, last command, version |
-| `GET /config` | JSON settings |
-| `POST /config` | Partial JSON settings, for example `{"fade":800}`. Returns `{"reboot":bool,"config":{…}}` or `400 {"error":…}`.<br>`"preview":"working"` shows that state on the light for 15 s without changing the mode. `"preview":""` ends it |
-| `GET /brightness?v=0..255` | Set brightness |
-| `POST /reboot` | Restart |
-| `POST /update` | Firmware upload (multipart) |
+| [`firmware/`](firmware) | ESP32-S3 firmware (PlatformIO): LED patterns, settings page, HTTP, Bluetooth LE and USB |
+| [`extension/`](extension) | VS Code extension: installs the agent hooks and drives your lights |
+| [`setup/`](setup) | CodeShelf Light Setup: desktop app for Windows, macOS and Linux that installs the firmware and sets up WiFi over USB |
+| [`docs/`](docs) | Hardware, protocol, firmware and troubleshooting guides |
 
-Send `POST /config` as JSON or plain text: `curl -H 'Content-Type: application/json' -d '{"fade":800}' …`.
-The settings JSON stores states as `[color, pattern, period ms]`:
+## Quick start
 
-```json
-{"name":"CodeShelf Light","host":"codeshelf-light","wifi":true,"ble":true,"brightness":32,"timeout":30,"fade":600,
- "states":{"working":["#0000ff","breathe",2600],"waiting":["#00ff00","solid",2000],"attention":["#ff4600","solid",1200],
-           "error":["#ff0000","solid",1000],"off":["#000000","solid",1000]}}
+### 1. Get the hardware
+
+A [Waveshare ESP32-S3-Zero](https://www.waveshare.com/esp32-s3-zero.htm) (it has a WS2812 RGB LED on board) and a USB-C data cable.
+Any ESP32-S3 board with a WS2812 LED works with a one-line change; see [hardware](docs/hardware.md).
+
+### 2. Set up the light
+
+Download **CodeShelf Light Setup** for your system from the [latest release](https://github.com/dumr666/codeshelf-light/releases/latest):
+
+| System | File |
+|---|---|
+| Windows | `codeshelf-setup-windows.exe` |
+| macOS | `codeshelf-setup-macos.zip` (unzip, then right-click → Open the first time) |
+| Linux | `codeshelf-setup-linux` (`chmod +x`, and see [serial port access](docs/troubleshooting.md#linux-permission-denied-on-the-serial-port)) |
+
+Plug in the board, open the app and:
+
+1. **Install firmware**. Takes about 30 seconds.
+2. Pick your **WiFi network**, enter the password and choose a **name**, then **Save to light**.
+3. The app shows the light's address, e.g. `http://codeshelf-light-1a2b.local/`.
+
+Prefer your phone? A light without WiFi can also be set up over Bluetooth from the [web app](docs/firmware.md#bluetooth-app).
+
+### 3. Install the VS Code extension
+
+Install `codeshelf-light-<version>.vsix` from the release:
+
+```bash
+code --install-extension codeshelf-light-1.0.0.vsix
 ```
 
-To protect the page, settings, firmware upload and reboot, add `#define OTA_PASSWORD "..."` to `secrets.h` (user `admin`).
-Then add `upload_flags = --auth=<password>` to the `ota` env.
-`/set` and `/status` stay open so the extension can reach them.
+On first start it finds the light on your network, adds it, and asks to add hooks for Claude Code.
+Pick more agents with **CodeShelf Light: Choose Agents**. That is all; start an agent and watch the light.
 
-## Bluetooth (BLE)
+The [extension README](extension/README.md) covers several lights, per-project lights, muting sessions and your own agents.
 
-The device advertises under its name. All values are UTF-8 text, so you can read and write them in LightBlue or nRF Connect.
+## How it works
 
-| UUID | Name | Access |
-|---|---|---|
-| `c1a0de00-0000-4000-8000-000000000000` | service | |
-| `c1a0de01-…` | Mode (T/G/Y/R/O) | read, write, notify |
-| `c1a0de02-…` | Brightness (0-255) | read, write, notify. Accepts text or a single raw byte |
-| `c1a0de03-…` | Settings (JSON) | read, write. Same as `/config`. An invalid write is rejected and the value resets |
-| `c1a0de04-…` | Status (JSON) | read |
-| `c1a0de05-…` | Command (reboot) | write |
+```
+ Claude Code ─┐
+ Gemini CLI  ─┤ hooks   ~/.codeshelf/light/   VS Code     WiFi (HTTP)
+ Copilot CLI ─┼───────▶  sessions/*.json ───▶ extension ─────────────▶ CodeShelf Light(s)
+ Cursor      ─┤                                          or USB serial
+ your tool   ─┘
+```
 
-## Code
+1. Each agent runs a tiny hook script on its events (prompt submitted, tool used, permission asked, stopped …).
+   The script maps the event to a state and writes one small file per session.
+2. The extension watches those files, works out the most important state for each light, and sends it as one letter (`T`, `G`, `Y`, `R`, `O`).
+3. The light fades to that state's color and pattern. If it hears nothing for 30 seconds (computer asleep, VS Code closed), it turns off.
 
-| File | Purpose |
-|---|---|
-| `src/main.cpp` | Setup, loop, commands, status, WiFi and OTA |
-| `src/config.cpp` | Settings: defaults, JSON, NVS storage |
-| `src/led.cpp` | Patterns and fades |
-| `src/web.cpp` | HTTP server |
-| `src/ble.cpp` | BLE service |
-| `web/index.html` | Settings page and BLE app |
-| `scripts/embed_web.py` | Embeds the page into `include/webpage.h` before each build |
+The light has its own settings page at `http://<name>.local/`. It is styled like iOS settings and works well on a phone.
+Add it to your home screen for an app icon.
+
+## Documentation
+
+- [Hardware](docs/hardware.md): parts, other boards, LED strips, a diffuser
+- [Firmware](docs/firmware.md): building, flashing, OTA updates, the settings page, the Bluetooth app
+- [Protocol](docs/protocol.md): HTTP API, USB serial protocol, Bluetooth LE, mDNS. Drive the light from anything.
+- [Troubleshooting](docs/troubleshooting.md)
+- [Extension](extension/README.md) · [Setup app](setup/README.md)
+
+## Building from source
+
+```bash
+# Firmware (needs PlatformIO)
+cd firmware && pio run -t upload
+
+# Extension
+cd extension && npm test && npm run package
+
+# Setup app (needs Python 3.10+)
+cd setup && pip install -r requirements.txt && python codeshelf-setup.py
+```
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the details, tests and the release process.
+
+## License
+
+[MIT](LICENSE). The setup app's standalone builds bundle [esptool](https://github.com/espressif/esptool), which is GPL-2.0-or-later, so those binaries are distributed under the GPL; the source in this repository stays MIT.
