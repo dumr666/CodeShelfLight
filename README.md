@@ -41,9 +41,9 @@ Download **CodeShelf Light Setup** for your system from the [latest release](htt
 
 | System | File |
 |---|---|
-| Windows | `codeshelf-setup-windows.exe` |
-| macOS | `codeshelf-setup-macos.zip` (unzip, then right-click → Open the first time) |
-| Linux | `codeshelf-setup-linux` (`chmod +x`, and see [serial port access](docs/troubleshooting.md#linux-permission-denied-on-the-serial-port)) |
+| Windows | [`codeshelf-setup-windows.exe`](https://github.com/dumr666/CodeShelfLight/releases/latest/download/codeshelf-setup-windows.exe) |
+| macOS | [`codeshelf-setup-macos.zip`](https://github.com/dumr666/CodeShelfLight/releases/latest/download/codeshelf-setup-macos.zip) (unzip, then right-click → Open the first time) |
+| Linux | [`codeshelf-setup-linux`](https://github.com/dumr666/CodeShelfLight/releases/latest/download/codeshelf-setup-linux) (`chmod +x`, and see [serial port access](docs/troubleshooting.md#linux-permission-denied-on-the-serial-port)) |
 
 Plug in the board, open the app and:
 
@@ -55,7 +55,7 @@ Prefer your phone? A light without WiFi can also be set up over Bluetooth from t
 
 ### 3. Install the VS Code extension
 
-Install `codeshelf-light-<version>.vsix` from the release:
+Download `codeshelf-light-<version>.vsix` from the [latest release](https://github.com/dumr666/CodeShelfLight/releases/latest) and install it:
 
 ```bash
 code --install-extension codeshelf-light-1.0.0.vsix
