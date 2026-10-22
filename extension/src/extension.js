@@ -53,7 +53,7 @@ async function saveLights(list) {
 function currentSessions() {
     const now = Date.now();
     const enabled = new Set(cfg().get('agents', ['claude-code']));
-    const opts = { staleWorkingMinutes: cfg().get('staleWorkingMinutes', 5), doneToIdleMinutes: cfg().get('doneToIdleMinutes', 0) };
+    const opts = { staleWorkingMinutes: cfg().get('staleWorkingMinutes', 15), doneToIdleMinutes: cfg().get('doneToIdleMinutes', 0) };
     return sessions.readSessions(SESSIONS_DIR, now)
         .filter((s) => enabled.has(s.agent))
         .map((s) => ({ ...s, effective: sessions.effectiveState(s, now, opts) }));
@@ -73,7 +73,7 @@ function writeDaemonConfig() {
         agents: cfg().get('agents', ['claude-code']),
         priority: cfg().get('priority', sessions.DEFAULT_PRIORITY),
         codes: cfg().get('codes', {}),
-        staleWorkingMinutes: cfg().get('staleWorkingMinutes', 5),
+        staleWorkingMinutes: cfg().get('staleWorkingMinutes', 15),
         doneToIdleMinutes: cfg().get('doneToIdleMinutes', 0),
         muted: [...muted()],
     }, null, 2);

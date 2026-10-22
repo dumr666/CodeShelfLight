@@ -58,7 +58,7 @@ You can change or disable the timeout on the light (Lights → Turn off without 
 ### The light stays blue after I stopped the agent
 
 Interrupting an agent fires no hook, so the session still looks busy.
-After `codeshelfLight.staleWorkingMinutes` (5 by default) it counts as done. **Reset Session States** clears it right away.
+After `codeshelfLight.staleWorkingMinutes` (15 by default) it counts as done. **Reset Session States** clears it right away.
 
 ### Amber stays on after I approved a tool
 

@@ -28,11 +28,32 @@ function readSessions(dir, now = Date.now()) {
     return sessions;
 }
 
-// Interrupted turns never send "done", so a long-silent "working" counts as done
+// Pressing Esc fires no hook, but Claude Code ends the transcript with "[Request interrupted by user...]"
+function interrupted(s) {
+    if (!s.transcript) return false;
+    try {
+        const fd = fs.openSync(s.transcript, 'r');
+        try {
+            const size = fs.fstatSync(fd).size;
+            const len = Math.min(size, 4096);
+            const buf = Buffer.alloc(len);
+            fs.readSync(fd, buf, 0, len, size - len);
+            const last = buf.toString('utf8').split('\n').filter((l) => l.trim()).pop() || '';
+            return last.includes('[Request interrupted by user');
+        } finally {
+            fs.closeSync(fd);
+        }
+    } catch (e) {
+        return false;
+    }
+}
+
+// Interrupted turns send no "done": the transcript tells, and a very long silent "working" counts as done anyway
 function effectiveState(s, now, opts) {
     const staleMs = (opts.staleWorkingMinutes || 0) * 60000;
     const doneMs = (opts.doneToIdleMinutes || 0) * 60000;
     let state = s.state;
+    if (state === 'working' && interrupted(s)) state = 'done';
     if (state === 'working' && staleMs > 0 && now - s.ts > staleMs) state = 'done';
     if (state === 'done' && doneMs > 0 && now - s.ts > doneMs) state = 'idle';
     return STATES.includes(state) ? state : 'idle';
@@ -85,4 +106,4 @@ function sessionsForLight(sessions, light, muted = new Set()) {
         (!projects.length || projects.some((p) => matchesProject(s.cwd, p))));
 }
 
-module.exports = { STATES, DEFAULT_PRIORITY, readSessions, effectiveState, aggregate, matchesProject, sessionsForLight };
+module.exports = { interrupted, STATES, DEFAULT_PRIORITY, readSessions, effectiveState, aggregate, matchesProject, sessionsForLight };

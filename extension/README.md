@@ -114,7 +114,7 @@ How prompts run:
 | `codeshelfLight.customAgents` | `[]` | Your own agents |
 | `codeshelfLight.priority` | `error, attention, working, done, idle` | Which state wins when several sessions are open |
 | `codeshelfLight.codes` | `T Y R G G O` | Light state for each agent state (advanced) |
-| `codeshelfLight.staleWorkingMinutes` | `5` | "Working" with no events for this long counts as done (interrupts send no event) |
+| `codeshelfLight.staleWorkingMinutes` | `15` | "Working" with no events for this long counts as done (interrupts send no event) |
 | `codeshelfLight.doneToIdleMinutes` | `0` | Turn "done" into "idle" after this long (only matters with custom codes) |
 | `codeshelfLight.nodePath` | `node` | Node binary in the hook command |
 | `codeshelfLight.enabled` | `true` | Send status to the lights |
@@ -169,7 +169,7 @@ Nothing leaves your computer except the state letter sent to your lights.
 ## Limitations
 
 - **Amber stays on while an approved tool runs.** No hook fires on approval; the state changes when the tool finishes.
-- **Blue stays on after you interrupt an agent.** Interrupts fire no hook; after `staleWorkingMinutes` the session counts as done.
+- **Blue stays on after you interrupt an agent.** Interrupts fire no hook, so the light reads the end of the session's transcript (Claude Code) and turns green within a second. Agents without a transcript fall back to `staleWorkingMinutes`.
 - **Cursor has no permission hook,** so "needs you" never shows for Cursor.
 - **Codex CLI is not a preset.** Its `notify` fires only when a turn completes; add it as a custom agent with one `done` event.
 - **The Gemini CLI and Copilot CLI presets** follow their published hook documentation.

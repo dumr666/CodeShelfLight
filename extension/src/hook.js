@@ -53,6 +53,7 @@ function handle(agent, payload) {
         event,
         cwd: payload.cwd || (payload.workspace_roots || [])[0] || process.cwd(),
         ts: Date.now(),
+        transcript: typeof payload.transcript_path === 'string' ? payload.transcript_path : undefined,
     }));
     fs.renameSync(tmp, file);
 }
