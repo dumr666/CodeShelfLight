@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dumr666/codeshelf-light",
+    "url": "https://github.com/dumr666/CodeShelfLight",
     "directory": "extension"
   },
   "engines": {
@@ -335,9 +335,9 @@
       }
     ]
   },
-  "homepage": "https://github.com/dumr666/codeshelf-light#readme",
+  "homepage": "https://github.com/dumr666/CodeShelfLight#readme",
   "bugs": {
-    "url": "https://github.com/dumr666/codeshelf-light/issues"
+    "url": "https://github.com/dumr666/CodeShelfLight/issues"
   },
   "keywords": [
     "claude code",

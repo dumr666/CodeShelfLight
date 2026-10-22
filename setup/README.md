@@ -10,7 +10,7 @@ It also restarts and factory-resets lights, and can install another firmware pac
 
 ## Download
 
-Get it from the [latest release](https://github.com/dumr666/codeshelf-light/releases/latest). The [troubleshooting guide](../docs/troubleshooting.md#setting-up) covers first-run warnings on macOS and Windows, and serial port permissions on Linux.
+Get it from the [latest release](https://github.com/dumr666/CodeShelfLight/releases/latest). The [troubleshooting guide](../docs/troubleshooting.md#setting-up) covers first-run warnings on macOS and Windows, and serial port permissions on Linux.
 
 ## Run from source
 

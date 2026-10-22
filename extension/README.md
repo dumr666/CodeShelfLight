@@ -1,7 +1,7 @@
 # CodeShelf Light for VS Code
 
 See what your AI coding agents are doing without looking at the screen.
-This extension drives one or more [CodeShelf Light](https://github.com/dumr666/codeshelf-light) RGB lights from the status of your agent sessions.
+This extension drives one or more [CodeShelf Light](https://github.com/dumr666/CodeShelfLight) RGB lights from the status of your agent sessions.
 
 | State | Default color | When |
 |---|---|---|
@@ -181,4 +181,4 @@ Nothing leaves your computer except the state letter sent to your lights.
 2. **Can the extension reach the light?** Hover over the status bar item; **Show Log** lists connection errors.
 3. **Does the light respond?** `curl 'http://<light>.local/set?c=Y'` turns it amber.
 
-More in the [troubleshooting guide](https://github.com/dumr666/codeshelf-light/blob/main/docs/troubleshooting.md).
+More in the [troubleshooting guide](https://github.com/dumr666/CodeShelfLight/blob/main/docs/troubleshooting.md).

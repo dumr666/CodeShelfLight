@@ -36,7 +36,7 @@ Any ESP32-S3 board with a WS2812 LED works with a one-line change; see [hardware
 
 ### 2. Set up the light
 
-Download **CodeShelf Light Setup** for your system from the [latest release](https://github.com/dumr666/codeshelf-light/releases/latest):
+Download **CodeShelf Light Setup** for your system from the [latest release](https://github.com/dumr666/CodeShelfLight/releases/latest):
 
 | System | File |
 |---|---|

@@ -1,10 +1,10 @@
-# Publishes the settings page to GitHub Pages, where it works as the Bluetooth app (Web Bluetooth needs HTTPS)
-name: Bluetooth app
+# Publishes the project site to GitHub Pages. The settings page goes to /app/, where it works as the Bluetooth app (Web Bluetooth needs HTTPS)
+name: Pages
 
 on:
   push:
     branches: [main]
-    paths: [firmware/web/index.html, .github/workflows/pages.yml]
+    paths: [site/**, docs/assets/icon.svg, firmware/web/index.html, .github/workflows/pages.yml]
   workflow_dispatch:
 
 permissions:
@@ -24,7 +24,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - run: mkdir _site && cp firmware/web/index.html _site/
+      - run: |
+          mkdir -p _site/app
+          cp site/index.html docs/assets/icon.svg _site/
+          cp firmware/web/index.html _site/app/
       - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

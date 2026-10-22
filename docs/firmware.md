@@ -57,7 +57,7 @@ That is useful for a light that is not on WiFi yet, or has WiFi turned off.
 - **Android, Windows, macOS, Linux:** Chrome or Edge.
 - **iPhone / iPad:** Safari has no Web Bluetooth; use the free [Bluefy](https://apps.apple.com/app/bluefy-web-ble-browser/id1492822055) browser.
 
-The page has to be served over HTTPS. This repository publishes it to GitHub Pages: https://dumr666.github.io/codeshelf-light/
+The page has to be served over HTTPS. This repository publishes it to GitHub Pages: https://dumr666.github.io/CodeShelfLight/app/
 
 ## Code
 

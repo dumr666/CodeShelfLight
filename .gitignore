@@ -19,3 +19,7 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
+
+# Local keys
+github_key
+github_key.pub
