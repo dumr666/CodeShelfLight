@@ -4,7 +4,7 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: [site/**, docs/assets/icon.svg, firmware/web/index.html, .github/workflows/pages.yml]
+    paths: [site/**, docs/assets/icon.svg, docs/assets/demo.gif, firmware/web/index.html, .github/workflows/pages.yml]
   workflow_dispatch:
 
 permissions:
@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           mkdir -p _site/app
-          cp site/index.html docs/assets/icon.svg _site/
+          cp site/index.html docs/assets/icon.svg docs/assets/demo.gif _site/
           cp firmware/web/index.html _site/app/
       - uses: actions/upload-pages-artifact@v3
         with:

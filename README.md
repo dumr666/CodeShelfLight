@@ -5,6 +5,8 @@
 <p align="center">A desk light that shows what your AI coding agents are doing.<br>
 Blue while they work, green when they wait for you, amber when they need an answer, red when they fail.</p>
 
+<p align="center"><img src="docs/assets/demo.gif" width="270" alt="The light changing color as an agent works, waits and asks for permission"></p>
+
 ---
 
 You start an agent, switch to something else, and come back too early or far too late.
